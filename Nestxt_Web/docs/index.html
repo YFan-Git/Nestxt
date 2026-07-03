@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nestxt 使用文档</title>
+    <link rel="icon" href="../icon/UI/book-open.png" type="image/png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- ===== 侧边栏 ===== -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>
+                <img src="../icon/icon.png" alt="logo" class="doc-logo-icon doc-logo-icon-light">
+            <img src="../icon/icon_Dark.png" alt="logo" class="doc-logo-icon doc-logo-icon-dark">
+            <img src="../icon/Title/Nestext-Light.png" alt="Nestxt" class="doc-logo-title doc-logo-title-light">
+            <img src="../icon/Title/Nestext-Dark.png" alt="Nestxt" class="doc-logo-title doc-logo-title-dark">
+            </h1>
+            <div class="version">使用文档 v1.0</div>
+        </div>
+        <div class="sidebar-search">
+            <input type="text" id="search-input" placeholder="搜索文档内容..." autocomplete="off">
+        </div>
+        <div class="search-results" id="search-results"></div>
+        <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    </div>
+
+    <!-- 移动端遮罩 -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <button class="menu-toggle" id="menu-toggle" title="菜单">☰</button>
+
+    <!-- ===== 回到顶部 ===== -->
+    <button class="back-to-top" id="back-to-top" title="回到顶部">↑</button>
+
+    <!-- ===== 主内容 ===== -->
+    <main class="content" id="content">
+        <!-- 内容由 JavaScript 渲染 -->
+    </main>
+
+    <script src="content.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

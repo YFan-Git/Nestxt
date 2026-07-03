@@ -1,0 +1,21 @@
+/* ============================================
+   fonts.css - 字体模块（统一管理所有 @font-face 声明）
+   ============================================ */
+
+/* ========== 主题 UI 字体 ========== */
+@font-face {
+    font-family: 'ThemeFont';
+    src: url('../font/vivoSans-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ========== 编辑器输入字体 ========== */
+@font-face {
+    font-family: 'EditorFont';
+    src: url('../font/vivoSans-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}

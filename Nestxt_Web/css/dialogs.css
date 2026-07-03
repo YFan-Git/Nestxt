@@ -1,0 +1,306 @@
+/* ============================================
+   dialogs.css - 右键菜单 + 模态框 + 版本保存弹窗
+   ============================================ */
+
+/* ========== 右键菜单 ========== */
+.context-menu {
+    position: fixed;
+    z-index: 1000;
+    min-width: 180px;
+    background: var(--menu-bg);
+    border: 1px solid var(--menu-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    padding: 4px;
+    display: none;
+}
+
+.menu-item {
+    padding: 7px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.1s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ctx-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.menu-item:hover {
+    background: var(--menu-hover);
+}
+
+.menu-item.menu-item-danger {
+    color: var(--danger);
+}
+
+.menu-item.menu-item-danger:hover {
+    background: rgba(247, 118, 142, 0.1);
+}
+
+/* ========== 通用对话框/模态框 ========== */
+.modal-overlay {
+    position: fixed;
+    z-index: 999;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--modal-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: overlayFadeIn 0.15s ease;
+}
+
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal {
+    background: var(--modal-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    min-width: 320px;
+    max-width: 420px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(-12px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-body p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    white-space: pre-line;
+    line-height: 1.6;
+}
+
+.modal-select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999fb5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+}
+
+.modal-select option {
+    padding: 8px;
+    background: var(--modal-bg);
+    color: var(--text-primary);
+}
+
+.modal-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.modal-btn {
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.modal-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
+}
+
+.modal-btn-primary {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+}
+
+.modal-btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.modal-btn-danger {
+    background: var(--danger);
+    color: #ffffff;
+    border-color: var(--danger);
+}
+
+.modal-btn-danger:hover {
+    background: var(--danger-hover);
+    border-color: var(--danger-hover);
+}
+
+/* ========== 版本保存弹窗 ========== */
+.modal-overlay.modal-version-overlay {
+    z-index: 1000;
+}
+
+.modal-dialog {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 380px;
+    max-width: 90vw;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-dialog .modal-header {
+    display: flex;
+    align-items: center;
+    height: 42px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-dialog .modal-header span {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.modal-dialog .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 8px;
+    font-size: 15px;
+    border-radius: 3px;
+}
+.modal-dialog .modal-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.modal-dialog .modal-body {
+    padding: 16px 14px;
+    margin-bottom: 0;
+}
+
+.modal-dialog .modal-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.modal-dialog .modal-input {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.modal-dialog .modal-input:focus {
+    border-color: var(--accent);
+}
+.modal-dialog .modal-input::placeholder {
+    color: var(--text-muted);
+}
+
+.modal-dialog .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+}
+
+.modal-dialog .modal-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.modal-dialog .modal-btn:hover {
+    opacity: 0.85;
+}
+.modal-dialog .modal-btn-cancel {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+.modal-dialog .modal-btn-confirm {
+    background: var(--accent);
+    color: #fff;
+}

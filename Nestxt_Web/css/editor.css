@@ -1,0 +1,320 @@
+/* ============================================
+   editor.css - 编辑器核心 + 行号 + 语法高亮覆盖层 + 空状态 + 右键菜单
+   ============================================ */
+
+/* ========== 编辑工具栏 ========== */
+.editor-toolbar {
+    height: 32px;
+    min-height: 32px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.toolbar-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.toolbar-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.toolbar-btn:active {
+    background: var(--bg-active);
+}
+
+.toolbar-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.toolbar-btn:disabled:hover {
+    background: none;
+    color: var(--text-muted);
+}
+
+.toolbar-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.toolbar-fontsize {
+    font-size: 12px;
+    color: var(--text-primary);
+    min-width: 24px;
+    text-align: center;
+    font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+/* ========== 编辑器主体 ========== */
+.editor-main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.editor-panel {
+    flex: 1;
+    min-height: 0;
+    background: var(--bg-primary);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-wrapper {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ========== 版本信息栏 ========== */
+.version-info {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--bg-active);
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--accent);
+    flex-shrink: 0;
+    user-select: none;
+}
+.version-info-icon {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.version-info-icon-img {
+    width: 14px;
+    height: 14px;
+}
+.version-info-text {
+    color: var(--text-secondary);
+}
+.version-info-name {
+    font-weight: 600;
+    color: var(--accent);
+}
+.version-info-time {
+    color: var(--text-muted);
+    margin-left: auto;
+    font-size: 11px;
+}
+
+/* ========== 行号区域 ========== */
+.line-numbers {
+    width: 40px;
+    min-width: 40px;
+    background: var(--line-num-bg);
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+    padding: 8px 0;
+    text-align: right;
+    user-select: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+}
+
+.line-num {
+    line-height: 1.6;
+    padding: 0 6px;
+    color: var(--line-num-text);
+    font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
+}
+
+.line-num.line-num-active {
+    color: var(--line-num-active);
+    font-weight: 600;
+}
+
+/* ========== 文本编辑区 ========== */
+.editor-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: 'EditorFont', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    color: transparent;
+    caret-color: var(--accent);
+    tab-size: 4;
+    -moz-tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+    overflow-y: auto;
+    letter-spacing: normal;
+    word-spacing: 0;
+    font-kerning: none;
+    font-variant-ligatures: none;
+    text-rendering: auto;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    cursor: text;
+    z-index: 2;
+    box-sizing: border-box;
+}
+
+.editor-textarea::selection {
+    background: rgba(122, 162, 247, 0.3);
+}
+
+.editor-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* ========== 语法高亮覆盖层 ========== */
+.syntax-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: 'EditorFont', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    color: var(--text-primary);
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    box-sizing: border-box;
+    letter-spacing: normal;
+    word-spacing: 0;
+    font-kerning: none;
+    font-variant-ligatures: none;
+    text-rendering: auto;
+}
+
+.syntax-overlay::-webkit-scrollbar {
+    display: none;
+}
+.syntax-overlay {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ========== 编辑器空状态 ========== */
+.editor-empty {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.editor-empty-icon {
+    font-size: 10px;
+    opacity: 1.0;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: transform 0.2s ease;
+}
+.editor-empty-icon:hover {
+    transform: scale(1.15);
+}
+
+.editor-empty-icon-img {
+    width: 64px;
+    height: 64px;
+    opacity: 1.0;
+    pointer-events: none;
+}
+
+.editor-empty-text {
+    font-size: 16px;
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+/* ========== 编辑器右键菜单 ========== */
+.editor-context-menu {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    padding: 4px;
+    z-index: 9999;
+}
+.editor-context-menu-item {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.editor-context-menu-item:hover {
+    background: var(--bg-hover);
+    color: var(--accent);
+}
+
+/* ========== 拖拽覆盖 ========== */
+.editor-panel.drag-over {
+    background: var(--drag-overlay);
+    outline: 3px dashed var(--accent);
+    outline-offset: -3px;
+}
+
+.editor-panel.drag-over .line-numbers {
+    background: transparent;
+}
