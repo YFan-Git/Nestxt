@@ -27,7 +27,6 @@ share/python-wheels/
 MANIFEST
 
 # PyInstaller (keep .spec for build configuration)
-# *.spec  <- DO NOT ignore build.spec
 Build/
 dist/
 *.pyz
@@ -80,19 +79,35 @@ $RECYCLE.BIN/
 *.msp
 
 # Application specific - Data files
-data/
-*.data
+# Track the entire data directory as template
+# Only ignore runtime-generated data files
+data/data.json
+data/data.json.bak
+data/data.json.tmp
+data/data.json.old
+data/*.log
+data/*.tmp
+data/temp/
+!data/.gitkeep
+
+# User data (production) - ignore all user-generated data
 UserData/
-*.json.bak
-*.json.tmp
-*.json.old
-Nestxt.exe
-Nestxt_debug.exe
+UserData/*.json
+UserData/*.bak
+UserData/*.tmp
+UserData/*.old
+UserData/*.log
+UserData/temp/
+!UserData/.gitkeep
+
+# Application executables (ignore all EXEs)
 *.exe
 *.pkg
 *.dmg
 *.app
 *.portable
+Nestxt.exe
+Nestxt_debug.exe
 
 # Logs
 logs/
@@ -210,7 +225,6 @@ Temporary Items
 *.class
 *.o
 *.obj
-*.exe
 *.dll
 *.so
 *.dylib
@@ -265,9 +279,6 @@ secrets/
 .envrc
 
 # Project specific
-# Keep build.spec and Package.bat - these are build scripts!
-# *.spec  <- NOT ignored
-# *.bat   <- NOT ignored
 *.pyc
 *.pyo
 *.pyd
