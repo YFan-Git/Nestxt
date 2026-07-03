@@ -26,16 +26,15 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-*.spec
-*.manifest
-*.exe.manifest
-*.pdb
-*.map
+# PyInstaller (keep .spec for build configuration)
+# *.spec  <- DO NOT ignore build.spec
 Build/
 dist/
 *.pyz
 *.pyz?
+*.exe.manifest
+*.pdb
+*.map
 
 # Virtual environments
 venv/
@@ -80,7 +79,7 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
-# Application specific
+# Application specific - Data files
 data/
 *.data
 UserData/
@@ -125,18 +124,16 @@ temp/
 *.partial
 *.incomplete
 
-# Screenshots / media
+# Screenshots (ignore screenshots, keep icon PNGs)
 screenshots/
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.ico
-!.icon_Dark.ico
-*.icns
-*.svg
-!Web/icon/**/*.svg
+screenshot_*.png
+screenshot_*.jpg
+screenshot_*.jpeg
+capture_*.png
+*.screenshot.png
+
+# Note: Application icons (.png, .ico, .icns, .svg) are tracked
+# DO NOT add *.png here - icons are important!
 
 # Backup files
 *.backup
@@ -209,7 +206,7 @@ Temporary Items
 *.typed
 .stubs/
 
-# Binary files
+# Binary files (keep icons)
 *.class
 *.o
 *.obj
@@ -268,11 +265,9 @@ secrets/
 .envrc
 
 # Project specific
-Nestxt.spec
-Package.bat
-Package.ps1
-Package.sh
-build-script.bat
+# Keep build.spec and Package.bat - these are build scripts!
+# *.spec  <- NOT ignored
+# *.bat   <- NOT ignored
 *.pyc
 *.pyo
 *.pyd
@@ -280,3 +275,11 @@ build-script.bat
 .coverage
 .mypy_cache
 .ruff_cache
+
+# --- IMPORTANT: All icon files are tracked ---
+# .png, .ico, .icns, .svg are essential application assets
+# DO NOT add *.png, *.ico, *.icns, *.svg to this file!
+
+# --- IMPORTANT: Build scripts are tracked ---
+# build.spec and Package.bat are essential for building
+# DO NOT add *.spec or *.bat to this file!
