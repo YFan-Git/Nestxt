@@ -1,0 +1,1878 @@
+================================================================================
+                        Nestxt PC 端技术开发文档
+================================================================================
+
+版本：1.0
+日期：2026-07-03
+作者：YFan
+
+================================================================================
+目录
+================================================================================
+
+1. 项目概述
+2. 架构设计
+   2.1 混合架构模式
+   2.2 pywebview 桥接机制
+   2.3 三层存储架构（PC 端实现）
+3. 核心模块说明
+   3.1 Python 后端层
+   3.2 前端层（与 Web 端共享）
+   3.3 桥接层（API 接口）
+4. 关键技术实现
+   4.1 存储引擎注入机制
+   4.2 本地文件存储实现
+   4.3 单实例控制
+   4.4 窗口管理与图标设置
+   4.5 文件对话框集成
+   4.6 剪贴板操作
+   4.7 资源路径自适应
+5. 开发过程中的关键问题与解决方案
+   5.1 数据持久化可靠性问题
+   5.2 窗口关闭时数据丢失问题
+   5.3 多实例运行冲突问题
+   5.4 打包后资源文件路径问题
+   5.5 存储引擎异步调用问题
+6. 性能优化
+7. 核心数据结构定义
+   7.1 存储数据结构
+   7.2 API 接口定义
+   7.3 配置常量
+8. Python API 完整接口文档
+   8.1 StorageEngine（存储引擎）
+   8.2 Api（API 接口类）
+   8.3 工具函数
+9. 完整事件列表与流向说明
+   9.1 事件分类列表
+   9.2 PC 端特有事件流向
+10. 打包与部署
+    10.1 开发环境运行
+    10.2 PyInstaller 打包配置
+    10.3 打包流程
+    10.4 部署注意事项
+    10.5 系统要求
+11. 错误处理与降级策略
+    11.1 存储异常处理
+    11.2 文件操作异常处理
+    11.3 窗口异常处理
+    11.4 全局异常捕获
+12. 安全性考虑
+    12.1 本地数据安全
+    12.2 文件操作安全
+    12.3 单实例控制安全
+    12.4 安全最佳实践
+13. PC 端与 Web 端差异对比
+    13.1 架构差异
+    13.2 存储差异
+    13.3 功能差异
+    13.4 部署差异
+
+================================================================================
+1. 项目概述
+================================================================================
+
+项目结构：
+
+Nestxt_PC/
+├── py/                          # Python 后端代码
+│   ├── app.py                   # 应用主入口
+│   ├── config.py                # 配置常量
+│   ├── requirements.txt         # Python 依赖
+│   ├── core/                    # 核心模块
+│   │   ├── __init__.py
+│   │   ├── api.py              # API 接口类
+│   │   ├── storage.py          # 存储引擎
+│   │   ├── window.py           # 窗口管理
+│   │   └── singleton.py        # 单实例控制
+│   └── utils/                   # 工具模块
+│       ├── __init__.py
+│       ├── file_utils.py       # 文件操作工具
+│       ├── clipboard_utils.py  # 剪贴板工具
+│       └── resource_utils.py   # 资源路径工具
+├── Web/                         # 前端代码（与 Web 端共享）
+│   ├── index.html              # 前端主页面
+│   ├── docs.html               # 在线文档入口
+│   ├── css/                    # 样式文件
+│   ├── js/                     # JavaScript 代码
+│   ├── icon/                   # 图标资源
+│   ├── font/                   # 字体文件
+│   └── docs/                   # 在线文档
+├── data/                        # 本地数据目录（开发环境）
+│   ├── data.json               # 用户数据
+│   └── data.json.bak           # 数据备份
+├── dist/                        # 打包输出目录
+│   └── Nestxt.exe              # 可执行文件
+├── Build/                       # 打包临时文件
+├── icon_Dark.ico                # 应用图标
+├── build.spec                   # PyInstaller 配置
+└── Package.bat                  # 打包脚本
+
+Nestxt PC 端是一款基于 pywebview 的桌面文本编辑器，采用混合架构模式，
+将 Web 前端技术与 Python 后端能力相结合。前端使用与 Web 端完全相同的 
+HTML/CSS/JavaScript 代码，后端通过 Python 提供本地文件存储、系统对话框、
+剪贴板操作等原生能力。
+
+主要功能特性：
+- 桌面应用体验：独立窗口运行，支持系统托盘（可选）
+- 本地文件存储：数据保存在 %APPDATA%/Nestxt/UserData/data.json
+- 系统文件对话框：导入/导出文件使用原生对话框
+- 剪贴板集成：支持系统剪贴板复制粘贴
+- 单实例控制：防止多开导致数据冲突
+- 自动备份：每次写入数据前自动创建备份
+- 跨平台前端：复用 Web 端代码，保持一致的用户体验
+
+技术栈：
+- 后端：Python 3.x、pywebview、PyInstaller（打包）
+- 前端：原生 JavaScript (ES6)、CSS3、HTML5（与 Web 端共享）
+- 存储：本地 JSON 文件（%APPDATA%/Nestxt/UserData/data.json）
+- 架构：混合架构（Python 后端 + Web 前端 + JS-Python 桥接）
+- 平台：Windows（使用 EdgeChromium 渲染引擎）
+
+================================================================================
+2. 架构设计
+================================================================================
+
+2.1 混合架构模式
+--------------------------------------------------------------------------------
+
+Nestxt PC 端采用混合架构，结合了 Web 技术的灵活性和 Python 的系统能力。
+
+核心组件：
+- Python 后端：负责窗口管理、本地存储、系统对话框、剪贴板等原生功能
+- Web 前端：负责 UI 渲染、用户交互、业务逻辑（与 Web 端完全相同）
+- pywebview 桥接：提供 JS ↔ Python 双向通信机制
+
+设计优势：
+- 代码复用：前端代码与 Web 端 100% 共享，无需重复开发
+- 原生能力：通过 Python 访问系统 API，突破浏览器沙箱限制
+- 数据持久化：使用本地文件存储，不依赖浏览器 localStorage
+- 跨平台潜力：前端代码无需修改即可适配不同平台
+
+架构层次：
+┌─────────────────────────────────────┐
+│         Web 前端层（HTML/CSS/JS）    │  ← 与 Web 端相同
+├─────────────────────────────────────┤
+│         StorageBridge（存储桥接层）  │  ← 注入自定义引擎
+├─────────────────────────────────────┤
+│         pywebview JS API 桥接        │  ← JS ↔ Python 通信
+├─────────────────────────────────────┤
+│         Python API 层                │  ← 提供系统能力
+├─────────────────────────────────────┤
+│         Python 后端层                │  ← 窗口、存储、工具
+└─────────────────────────────────────┘
+
+2.2 pywebview 桥接机制
+--------------------------------------------------------------------------------
+
+pywebview 提供了 JavaScript 与 Python 之间的双向通信机制。
+
+JavaScript 调用 Python：
+- 前端通过 window.pywebview.api 访问 Python API 对象
+- 所有 API 方法调用返回 Promise（异步）
+- 参数自动序列化/反序列化（JSON）
+- 示例：await window.pywebview.api.setItem('key', 'value')
+
+Python 调用 JavaScript：
+- 后端通过 window.evaluate_js() 执行 JavaScript 代码
+- 可获取返回值（自动转换类型）
+- 示例：window.evaluate_js('StorageService.saveAll()')
+
+通信流程：
+1. 前端调用 API：window.pywebview.api.setItem(key, value)
+2. pywebview 序列化参数，通过 IPC 传递给 Python
+3. Python 执行对应方法，返回结果
+4. pywebview 序列化结果，通过 IPC 返回给前端
+5. 前端 Promise resolve，获取结果
+
+注意事项：
+- 所有 API 调用都是异步的，必须使用 await 或 .then()
+- 参数和返回值必须是可序列化的（避免传递函数、DOM 对象等）
+- 频繁调用会影响性能，建议批量操作
+
+2.3 三层存储架构（PC 端实现）
+--------------------------------------------------------------------------------
+
+PC 端复用了 Web 端的三层存储架构，但底层存储引擎不同。
+
+第一层：StorageBridge（技术层）
+- 职责：提供底层存储的原始读写接口
+- 特点：
+  * 通过 setEngine() 注入 Python StorageEngine
+  * 所有方法返回 Promise（真正的异步）
+  * 自动添加 nestxt_ 前缀
+  * 自动 JSON 序列化/反序列化
+- 接口：setItem、getItem、removeItem、clear
+
+第二层：StorageService（业务层）
+- 职责：基于 StorageBridge 实现业务语义的数据持久化
+- 特点：
+  * 管理 16 个数据键（folders、files、tabs、theme 等）
+  * 立即写入（不使用防抖，确保数据可靠性）
+  * 统一数据格式转换
+- 接口：load、save、remove
+
+第三层：业务服务层
+- FolderService、FileService 等直接调用 StorageService
+- 无需关心底层存储细节
+- 与 Web 端代码完全相同
+
+PC 端存储引擎：StorageEngine（Python 实现）
+- 存储位置：%APPDATA%/Nestxt/UserData/data.json
+- 存储格式：JSON（UTF-8 编码）
+- 线程安全：使用 threading.Lock 保护并发访问
+- 备份机制：每次写入前自动创建 .bak 备份
+
+设计优势：
+- 存储逻辑与业务逻辑解耦
+- 前端代码无需修改即可适配不同存储引擎
+- 便于单元测试（可 Mock StorageBridge）
+- 数据持久化更可靠（不依赖浏览器 localStorage）
+
+================================================================================
+3. 核心模块说明
+================================================================================
+
+3.1 Python 后端层
+--------------------------------------------------------------------------------
+
+app.py - 应用主入口
+- 职责：创建桌面窗口，注入 Python API，启动事件循环
+- 核心流程：
+  1. 单实例检查（防止多开）
+  2. 验证前端文件存在
+  3. 创建 API 实例
+  4. 创建窗口并注入 API
+  5. 启动 pywebview 事件循环
+  6. 清理资源（释放互斥体）
+
+config.py - 配置常量
+- 职责：定义应用配置常量
+- 配置项：
+  * 窗口配置：标题、尺寸、最小尺寸、背景色
+  * 文件对话框：支持的文件类型
+  * 存储配置：数据目录、文件名、备份后缀
+  * 单实例控制：互斥体名称
+
+core/storage.py - 存储引擎
+- 职责：提供本地文件存储，对接 StorageBridge 的 4 个 API
+- 特性：
+  * 线程安全（使用 threading.Lock）
+  * 路径自适应（%APPDATA%/Nestxt/UserData/data.json）
+  * 备份写入（先备份再覆盖，防止数据损坏）
+  * 自动创建数据文件（首次运行时）
+- 接口：set_item、get_item、remove_item、clear
+
+core/api.py - API 接口类
+- 职责：提供前端可调用的 Python 方法
+- 接口分类：
+  * 存储 API：setItem、getItem、removeItem、clear
+  * 工具 API：ping、debugLog
+  * 文件操作 API：saveFile、importFile
+  * 窗口控制 API：closeWindow
+  * 剪贴板 API：clipboardCopy、clipboardPaste
+
+core/window.py - 窗口管理
+- 职责：创建和管理 pywebview 窗口
+- 功能：
+  * 创建主窗口（设置标题、尺寸、图标等）
+  * 注入 JS API（供前端调用）
+  * 设置窗口图标（使用 Win32 API）
+  * 监听窗口事件（loaded、closed）
+  * 清理资源（释放互斥体）
+
+core/singleton.py - 单实例控制
+- 职责：确保应用只有一个实例运行
+- 实现：使用 Windows 互斥体 (Mutex)
+- 流程：
+  1. 创建命名互斥体
+  2. 检查是否已存在（GetLastError == 183）
+  3. 如已存在，弹窗提示并退出
+  4. 应用退出时释放互斥体
+
+utils/file_utils.py - 文件操作工具
+- 职责：提供文件导入/导出功能
+- 功能：
+  * save_file：弹出保存对话框，写入文件
+  * import_file：弹出打开对话框，读取文件内容
+  * 支持多编码检测（UTF-8、GBK、GB2312、Latin-1）
+
+utils/clipboard_utils.py - 剪贴板工具
+- 职责：提供剪贴板操作功能
+- 功能：
+  * clipboard_copy：复制文本到剪贴板
+  * clipboard_paste：从剪贴板获取文本
+  * 使用 Win32 API（win32clipboard）
+
+utils/resource_utils.py - 资源路径工具
+- 职责：解析资源文件路径
+- 特性：
+  * 开发模式：相对于项目根目录
+  * 打包模式：相对于 PyInstaller 的 _MEIPASS 临时目录
+  * 自动适配两种模式
+
+3.2 前端层（与 Web 端共享）
+--------------------------------------------------------------------------------
+
+前端代码与 Web 端完全相同，包括：
+- HTML 结构（index.html）
+- CSS 样式（css/ 目录）
+- JavaScript 逻辑（js/ 目录）
+- 图标资源（icon/ 目录）
+- 字体文件（font/ 目录）
+
+唯一差异：
+- StorageBridge 通过 setEngine() 注入 Python StorageEngine
+- 其他代码完全相同，无需修改
+
+3.3 桥接层（API 接口）
+--------------------------------------------------------------------------------
+
+桥接层由 pywebview 提供，核心是 window.pywebview.api 对象。
+
+前端调用示例：
+```javascript
+// 存储数据
+await window.pywebview.api.setItem('key', 'value');
+
+// 读取数据
+const value = await window.pywebview.api.getItem('key');
+
+// 保存文件
+const result = await window.pywebview.api.saveFile(content, 'export.txt');
+
+// 导入文件
+const result = await window.pywebview.api.importFile();
+
+// 剪贴板操作
+await window.pywebview.api.clipboardCopy('text');
+const text = await window.pywebview.api.clipboardPaste();
+```
+
+Python 调用示例：
+```python
+# 执行 JavaScript
+result = window.evaluate_js('StorageService.getFolders()')
+
+# 调用前端方法
+window.evaluate_js('App.showMessage("Hello from Python")')
+```
+
+================================================================================
+4. 关键技术实现
+================================================================================
+
+4.1 存储引擎注入机制
+--------------------------------------------------------------------------------
+
+实现原理：
+1. StorageBridge 提供 setEngine() 方法，允许注入自定义存储引擎
+2. PC 端在应用启动时，将 Python StorageEngine 注入到 StorageBridge
+3. StorageBridge 的所有操作通过 pywebview API 调用 Python 方法
+
+注入流程：
+```javascript
+// StorageBridge.js
+StorageBridge = {
+    _engine: null,
+    
+    setEngine(engine) {
+        this._engine = engine;
+    },
+    
+    async setItem(key, value) {
+        if (this._engine) {
+            return await this._engine.setItem(key, JSON.stringify(value));
+        }
+        // 浏览器端使用 localStorage
+        localStorage.setItem(`nestxt_${key}`, JSON.stringify(value));
+    },
+    
+    async getItem(key) {
+        if (this._engine) {
+            const value = await this._engine.getItem(key);
+            return value ? JSON.parse(value) : null;
+        }
+        // 浏览器端使用 localStorage
+        const value = localStorage.getItem(`nestxt_${key}`);
+        return value ? JSON.parse(value) : null;
+    }
+};
+
+// app.js（PC 端初始化）
+async function initPC() {
+    if (window.pywebview && window.pywebview.api) {
+        StorageBridge.setEngine(window.pywebview.api);
+    }
+}
+```
+
+关键技术点：
+1. 接口一致性：StorageEngine 必须实现 setItem、getItem、removeItem、clear 四个方法
+2. 异步包装：所有方法返回 Promise，保证与浏览器端行为一致
+3. 序列化：参数和返回值自动 JSON 序列化/反序列化
+4. 错误处理：捕获异常并返回错误信息
+
+4.2 本地文件存储实现
+--------------------------------------------------------------------------------
+
+存储位置：
+- 路径：%APPDATA%/Nestxt/UserData/data.json
+- 示例：C:\Users\YFan-01\AppData\Roaming\Nestxt\UserData\data.json
+
+存储格式：
+```json
+{
+  "nestxt_folders": [...],
+  "nestxt_files": [...],
+  "nestxt_tabs": [...],
+  "nestxt_theme": "dark",
+  "nestxt_fontsize": 16,
+  ...
+}
+```
+
+线程安全：
+```python
+class StorageEngine:
+    def __init__(self):
+        self._lock = threading.Lock()  # 互斥锁
+    
+    def set_item(self, key: str, value: str) -> dict:
+        with self._lock:  # 自动获取和释放锁
+            data = self._read_data()
+            data[key] = value
+            return self._write_data(data)
+```
+
+备份机制：
+```python
+def _write_data(self, data: dict) -> bool:
+    # 1. 备份现有文件
+    if self._data_path.exists():
+        backup_path = self._data_path.with_suffix('.json.bak')
+        with open(self._data_path, 'r', encoding='utf-8') as src:
+            content = src.read()
+        with open(backup_path, 'w', encoding='utf-8') as dst:
+            dst.write(content)
+    
+    # 2. 写入新数据
+    with open(self._data_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+```
+
+设计优势：
+- 数据持久化可靠（不依赖浏览器 localStorage）
+- 线程安全（防止并发写入导致数据损坏）
+- 自动备份（防止写入失败导致数据丢失）
+- 跨会话持久化（关闭应用后数据依然存在）
+
+4.3 单实例控制
+--------------------------------------------------------------------------------
+
+实现原理：
+- 使用 Windows 互斥体 (Mutex) 确保只有一个实例运行
+- 互斥体是内核对象，系统级别唯一
+
+实现代码：
+```python
+def check_single_instance() -> bool:
+    mutex_name = "NestxtApp_Mutex_{F7B3C8D9-E4A5-4F2C-9B8A-7D6E5F4C3B2A}"
+    
+    # 创建互斥体
+    _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+    
+    # 检查是否已存在
+    last_error = ctypes.windll.kernel32.GetLastError()
+    if last_error == 183:  # ERROR_ALREADY_EXISTS
+        # 弹窗提示
+        _show_message("Nestxt", "Nestxt 已在运行，请勿重复启动。")
+        return False
+    
+    return True
+
+def release_mutex():
+    if _mutex_handle:
+        ctypes.windll.kernel32.CloseHandle(_mutex_handle)
+```
+
+工作流程：
+1. 应用启动时创建命名互斥体
+2. 如果互斥体已存在（GetLastError == 183），说明已有实例运行
+3. 弹窗提示用户并退出当前进程
+4. 应用正常退出时释放互斥体（CloseHandle）
+
+设计优势：
+- 防止多开导致数据冲突
+- 系统级别控制，无法绕过
+- 用户友好提示
+
+4.4 窗口管理与图标设置
+--------------------------------------------------------------------------------
+
+窗口创建：
+```python
+def create_window(api) -> webview.Window:
+    html_path = resolve_resource_path("Web/index.html")
+    
+    window = webview.create_window(
+        title="Nestxt 文本编辑器",
+        url=html_path,
+        js_api=api,              # 注入 Python API
+        width=1200,
+        height=800,
+        resizable=True,
+        min_size=(800, 600),
+        background_color="#212326",
+    )
+    
+    window.events.loaded += _on_window_loaded
+    window.events.closed += _on_window_closed
+    return window
+```
+
+图标设置（使用 Win32 API）：
+```python
+def _set_window_icon():
+    icon_path = resolve_resource_path("icon_Dark.ico")
+    
+    # 查找窗口句柄
+    hwnd = win32gui.FindWindow(None, "Nestxt 文本编辑器")
+    
+    # 加载图标
+    icon_handle = ctypes.windll.user32.LoadImageW(
+        None, icon_path, win32con.IMAGE_ICON, 0, 0,
+        win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
+    )
+    
+    # 设置图标
+    win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_BIG, icon_handle)
+    win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_SMALL, icon_handle)
+```
+
+注意事项：
+- 必须在窗口加载完成后设置图标（loaded 事件）
+- 使用 FindWindow 查找窗口句柄
+- 同时设置大图标和小图标（ICON_BIG、ICON_SMALL）
+
+4.5 文件对话框集成
+--------------------------------------------------------------------------------
+
+保存文件对话框：
+```python
+def save_file(window, content: str, suggested_name: str = 'export.txt') -> dict:
+    # 根据文件后缀选择文件类型
+    if suggested_name.lower().endswith('.json'):
+        file_types = ("JSON 文件 (*.json)",)
+    else:
+        file_types = ("文本文件 (*.txt)",)
+    
+    # 弹出保存对话框
+    result = window.create_file_dialog(
+        webview.SAVE_DIALOG,
+        save_filename=suggested_name,
+        file_types=file_types
+    )
+    
+    if not result:
+        return {"success": False, "error": "用户取消"}
+    
+    file_path = result[0]
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    
+    return {"success": True, "path": file_path}
+```
+
+打开文件对话框：
+```python
+def import_file(window) -> dict:
+    file_types = (
+        "文本文件 (*.txt;*.csv;*.log;*.ini;*.json;*.xml;*.html;*.css;*.js;*.py;*.c;*.cpp)",
+        "所有文件 (*.*)"
+    )
+    
+    # 弹出打开对话框
+    result = window.create_file_dialog(
+        webview.OPEN_DIALOG,
+        directory='',
+        allow_multiple=False,
+        file_types=file_types
+    )
+    
+    if not result:
+        return {"success": False, "error": "用户取消"}
+    
+    file_path = result[0]
+    file_name = os.path.basename(file_path)
+    
+    # 多编码检测
+    content = None
+    for encoding in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                content = f.read()
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    
+    if content is None:
+        return {"success": False, "error": "无法识别文件编码"}
+    
+    return {"success": True, "name": file_name, "content": content}
+```
+
+前端调用示例：
+```javascript
+// 导出文件
+async function exportFile() {
+    const content = EditorController.getContent();
+    const result = await window.pywebview.api.saveFile(content, 'export.txt');
+    if (result.success) {
+        App.showMessage('导出成功');
+    }
+}
+
+// 导入文件
+async function importFile() {
+    const result = await window.pywebview.api.importFile();
+    if (result.success) {
+        FileService.create(result.name, null, result.content);
+    }
+}
+```
+
+4.6 剪贴板操作
+--------------------------------------------------------------------------------
+
+复制到剪贴板：
+```python
+def clipboard_copy(text: str) -> dict:
+    try:
+        import win32clipboard
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardText(text, win32clipboard.CF_UNICODETEXT)
+        win32clipboard.CloseClipboard()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+```
+
+从剪贴板粘贴：
+```python
+def clipboard_paste() -> dict:
+    try:
+        import win32clipboard
+        win32clipboard.OpenClipboard()
+        try:
+            text = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+        except Exception:
+            text = ""
+        win32clipboard.CloseClipboard()
+        return {"success": True, "text": text}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+```
+
+使用场景：
+- 编辑器右键菜单的复制/粘贴功能
+- 快捷键 Ctrl+C / Ctrl+V
+- 与系统剪贴板集成
+
+4.7 资源路径自适应
+--------------------------------------------------------------------------------
+
+问题背景：
+- 开发模式：资源文件相对于项目根目录
+- 打包模式：资源文件被解压到 PyInstaller 的 _MEIPASS 临时目录
+
+解决方案：
+```python
+def resolve_resource_path(relative_path: str) -> str:
+    if getattr(sys, 'frozen', False):
+        # 打包模式：使用 _MEIPASS 临时目录
+        base_path = Path(sys._MEIPASS)
+    else:
+        # 开发模式：相对于项目根目录
+        base_path = Path(__file__).parent.parent.parent
+    return str(base_path / relative_path)
+```
+
+使用示例：
+```python
+# 解析前端文件路径
+html_path = resolve_resource_path("Web/index.html")
+
+# 解析图标文件路径
+icon_path = resolve_resource_path("icon_Dark.ico")
+```
+
+工作原理：
+- sys.frozen：PyInstaller 打包后会设置此属性
+- sys._MEIPASS：PyInstaller 解压资源的临时目录
+- 开发模式下，__file__ 是 resource_utils.py 的路径，向上三级是项目根目录
+
+================================================================================
+5. 开发过程中的关键问题与解决方案
+================================================================================
+
+5.1 数据持久化可靠性问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- Web 端使用 localStorage，数据存储在浏览器中
+- 浏览器清理缓存时可能丢失数据
+- localStorage 容量限制（通常 5-10MB）
+- 跨设备数据无法同步
+
+根因分析：
+- localStorage 是浏览器提供的临时存储
+- 用户可能无意中清理浏览器数据
+- 不同浏览器、不同设备的 localStorage 相互独立
+
+解决方案：
+1. 使用本地文件存储（%APPDATA%/Nestxt/UserData/data.json）
+2. 通过 StorageBridge.setEngine() 注入 Python StorageEngine
+3. 前端代码无需修改，自动适配新的存储引擎
+4. 数据保存在系统 AppData 目录，不会被浏览器清理
+
+实现细节：
+```javascript
+// StorageBridge.js
+setEngine(engine) {
+    this._engine = engine;
+}
+
+async setItem(key, value) {
+    if (this._engine) {
+        // PC 端：调用 Python API
+        return await this._engine.setItem(key, JSON.stringify(value));
+    }
+    // Web 端：使用 localStorage
+    localStorage.setItem(`nestxt_${key}`, JSON.stringify(value));
+}
+```
+
+设计优势：
+- 数据持久化更可靠
+- 不受浏览器缓存清理影响
+- 存储容量更大（仅受磁盘空间限制）
+- 前端代码无需修改
+
+5.2 窗口关闭时数据丢失问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 窗口关闭时触发 beforeunload 事件
+- beforeunload 中执行异步保存操作
+- 窗口关闭导致 IPC 连接断开，保存失败
+- 数据丢失或损坏
+
+根因分析：
+1. beforeunload 事件是同步的，无法等待异步操作完成
+2. 窗口关闭时 pywebview 立即销毁，IPC 连接断开
+3. Python 端的保存操作尚未完成，窗口已经关闭
+
+解决方案：
+1. 移除 beforeunload 事件中的异步保存操作
+2. StorageService 改为立即写入（不使用防抖）
+3. 每次数据变化时立即调用 StorageBridge.setItem()
+4. 不依赖窗口关闭事件进行数据持久化
+
+实现细节：
+```javascript
+// StorageService.js（PC 端）
+save(key, data) {
+    // 立即写入，不使用防抖
+    StorageBridge.setItem(key, data);
+}
+
+// 每次数据变化时立即保存
+FolderService.create(name, parentId) {
+    const folder = { id: nextId++, name, parentId };
+    this._folders.push(folder);
+    StorageService.saveFolders(this._folders);  // 立即保存
+    signal.emit(FOLDER_CREATED, folder);
+}
+```
+
+设计优势：
+- 数据实时持久化，不依赖窗口关闭事件
+- 避免 IPC 连接断开导致的保存失败
+- 即使应用崩溃，最多丢失最后一次操作的数据
+
+5.3 多实例运行冲突问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 用户可能多次点击启动应用
+- 多个实例同时运行会导致数据冲突
+- 多个进程同时写入 data.json 导致数据损坏
+
+根因分析：
+- 没有单实例控制机制
+- 多个进程同时访问同一个数据文件
+- 文件锁机制不完善
+
+解决方案：
+1. 使用 Windows 互斥体 (Mutex) 实现单实例控制
+2. 应用启动时检查是否已有实例运行
+3. 如已有实例，弹窗提示并退出
+4. StorageEngine 使用 threading.Lock 保护并发访问
+
+实现细节：
+```python
+def check_single_instance() -> bool:
+    mutex_name = "NestxtApp_Mutex_{F7B3C8D9-E4A5-4F2C-9B8A-7D6E5F4C3B2A}"
+    
+    # 创建互斥体
+    _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+    
+    # 检查是否已存在
+    last_error = ctypes.windll.kernel32.GetLastError()
+    if last_error == 183:  # ERROR_ALREADY_EXISTS
+        _show_message("Nestxt", "Nestxt 已在运行，请勿重复启动。")
+        return False
+    
+    return True
+```
+
+设计优势：
+- 防止多开导致数据冲突
+- 系统级别控制，无法绕过
+- 用户友好提示
+
+5.4 打包后资源文件路径问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 开发模式下，资源文件相对于项目根目录
+- 打包后，资源文件被解压到 PyInstaller 的 _MEIPASS 临时目录
+- 路径解析失败导致找不到资源文件
+
+根因分析：
+- 开发模式：__file__ 是 Python 脚本的路径
+- 打包模式：__file__ 是 _MEIPASS 临时目录中的路径
+- 两种模式的路径结构不同
+
+解决方案：
+```python
+def resolve_resource_path(relative_path: str) -> str:
+    if getattr(sys, 'frozen', False):
+        # 打包模式：使用 _MEIPASS 临时目录
+        base_path = Path(sys._MEIPASS)
+    else:
+        # 开发模式：相对于项目根目录
+        base_path = Path(__file__).parent.parent.parent
+    return str(base_path / relative_path)
+```
+
+工作原理：
+- sys.frozen：PyInstaller 打包后会设置此属性
+- sys._MEIPASS：PyInstaller 解压资源的临时目录
+- 开发模式下，__file__ 是 resource_utils.py 的路径，向上三级是项目根目录
+
+注意事项：
+- 必须在 PyInstaller 配置中指定资源文件
+- 使用 datas 参数打包资源文件：
+  ```python
+  datas=[
+      ('Web', 'Web'),
+      ('icon_Dark.ico', '.'),
+  ]
+  ```
+
+5.5 存储引擎异步调用问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- StorageBridge 的方法返回 Promise
+- 前端代码需要等待异步操作完成
+- 同步调用会导致数据未保存就继续执行
+
+根因分析：
+- pywebview API 调用是真正的异步操作（JS ↔ Python 跨进程通信）
+- 必须使用 await 或 .then() 等待操作完成
+- 同步调用会立即返回 Promise 对象，而不是实际结果
+
+解决方案：
+```javascript
+// 正确方式：使用 await
+async function saveData() {
+    await StorageBridge.setItem('key', 'value');
+    console.log('数据已保存');
+}
+
+// 错误方式：同步调用
+function saveData() {
+    StorageBridge.setItem('key', 'value');  // 返回 Promise，不是实际结果
+    console.log('数据可能还未保存');
+}
+```
+
+设计优势：
+- 异步操作不会阻塞 UI
+- 明确的等待机制，避免数据未保存
+- 与浏览器端行为一致（Promise 接口）
+
+================================================================================
+6. 性能优化
+================================================================================
+
+6.1 存储性能优化
+--------------------------------------------------------------------------------
+
+1. 批量操作
+- 避免频繁调用 StorageBridge.setItem()
+- 建议：批量修改后一次性保存
+
+2. 数据压缩
+- 大文件内容可以考虑压缩后存储
+- 使用 zlib 或 gzip 压缩算法
+
+3. 增量更新
+- 只保存变化的数据，而不是全量保存
+- 建议：实现增量同步机制
+
+6.2 渲染性能优化
+--------------------------------------------------------------------------------
+
+前端渲染性能优化与 Web 端相同，参考《Nestxt_web_技术开发文档》第 6 章。
+
+主要优化点：
+1. 增量更新：FolderTreeRenderer 支持全量渲染和增量更新
+2. 渲染节流：使用 requestAnimationFrame 节流渲染
+3. 事件委托：将事件绑定到容器而非逐个元素
+4. 语法高亮降级：当高亮匹配总数超过 3000 个时，自动降级为纯文本显示
+
+6.3 启动性能优化
+--------------------------------------------------------------------------------
+
+1. 延迟加载
+- 非关键资源延迟加载（如在线文档）
+- 优先加载核心功能
+
+2. 资源压缩
+- CSS 和 JavaScript 文件压缩
+- 图片资源优化
+
+3. 缓存策略
+- 利用浏览器缓存
+- 减少重复加载
+
+6.4 内存管理
+--------------------------------------------------------------------------------
+
+1. 事件监听器清理
+- 窗口关闭时清理所有事件监听器
+- 避免内存泄漏
+
+2. 大对象释放
+- 及时释放大文件内容
+- 使用 WeakMap 缓存临时对象
+
+3. 垃圾回收
+- 避免循环引用
+- 及时清理不再使用的对象
+
+================================================================================
+7. 核心数据结构定义
+================================================================================
+
+7.1 存储数据结构
+--------------------------------------------------------------------------------
+
+data.json 文件结构：
+```json
+{
+  "nestxt_folders": [
+    {
+      "id": 1,
+      "name": "我的文档",
+      "parentId": null,
+      "expanded": true
+    }
+  ],
+  "nestxt_files": [
+    {
+      "id": 1,
+      "name": "笔记.txt",
+      "folderId": 1,
+      "content": "文件内容",
+      "encoding": "UTF-8",
+      "createdAt": "2026-07-03T10:00:00.000Z",
+      "updatedAt": "2026-07-03T10:00:00.000Z",
+      "versions": [
+        {
+          "id": 1720000000000,
+          "label": "初稿",
+          "content": "文件内容",
+          "createdAt": "2026-07-03T10:00:00.000Z"
+        }
+      ]
+    }
+  ],
+  "nestxt_tabs": [1, 2, 3],
+  "nestxt_activeTab": 1,
+  "nestxt_trash": [],
+  "nestxt_theme": "dark",
+  "nestxt_fontsize": 16,
+  "nestxt_linenum": true,
+  "nestxt_sidebar_width": 250,
+  "nestxt_wordwrap": false,
+  "nestxt_version_panel_width": 300,
+  "nestxt_autosave_interval": 30,
+  "nestxt_syntax": [
+    {
+      "name": "数字",
+      "type": "number",
+      "color": "#FF0000"
+    }
+  ],
+  "nestxt_syntax_highlight": true,
+  "nestxt_editing_versions": {
+    "1": null,
+    "2": 1720000000000
+  }
+}
+```
+
+7.2 API 接口定义
+--------------------------------------------------------------------------------
+
+StorageEngine 接口：
+```python
+class StorageEngine:
+    def set_item(self, key: str, value: str) -> dict:
+        """存储数据"""
+        pass
+    
+    def get_item(self, key: str):
+        """读取数据"""
+        pass
+    
+    def remove_item(self, key: str) -> dict:
+        """删除指定 key"""
+        pass
+    
+    def clear(self) -> dict:
+        """清空所有数据"""
+        pass
+```
+
+Api 接口：
+```python
+class Api:
+    # 存储 API
+    def setItem(self, key: str, value: str) -> dict:
+        """存储数据"""
+        pass
+    
+    def getItem(self, key: str):
+        """读取数据"""
+        pass
+    
+    def removeItem(self, key: str) -> dict:
+        """删除指定 key"""
+        pass
+    
+    def clear(self) -> dict:
+        """清空所有数据"""
+        pass
+    
+    # 工具 API
+    def ping(self) -> str:
+        """测试 API 桥接是否正常"""
+        pass
+    
+    def debugLog(self, msg: str) -> None:
+        """前端调试日志输出到 Python 终端"""
+        pass
+    
+    # 文件操作 API
+    def saveFile(self, content: str, suggested_name: str = 'export.txt') -> dict:
+        """弹出保存文件对话框，将内容写入用户选择的文件"""
+        pass
+    
+    def importFile(self) -> dict:
+        """弹出打开文件对话框，返回文件内容"""
+        pass
+    
+    # 窗口控制 API
+    def closeWindow(self) -> dict:
+        """关闭应用程序窗口"""
+        pass
+    
+    # 剪贴板 API
+    def clipboardCopy(self, text: str) -> dict:
+        """复制文本到剪贴板"""
+        pass
+    
+    def clipboardPaste(self) -> dict:
+        """从剪贴板获取文本"""
+        pass
+```
+
+7.3 配置常量
+--------------------------------------------------------------------------------
+
+config.py 配置项：
+```python
+# 单实例控制
+MUTEX_NAME = "Global\\NestxtSingleInstanceMutex"
+
+# 窗口配置
+WINDOW_TITLE = "Nestxt 文本编辑器"
+WINDOW_WIDTH = 1200
+WINDOW_HEIGHT = 800
+WINDOW_MIN_WIDTH = 800
+WINDOW_MIN_HEIGHT = 600
+WINDOW_BACKGROUND_COLOR = "#212326"
+
+# 资源文件
+ICON_FILE = "icon_Dark.ico"
+FRONTEND_PATH = "Web/index.html"
+
+# 文件对话框
+SAVE_FILE_TYPES_JSON = ("JSON 文件 (*.json)",)
+SAVE_FILE_TYPES_TXT = ("文本文件 (*.txt)",)
+OPEN_FILE_TYPES = (
+    "文本文件 (*.txt;*.csv;*.log;*.ini;*.json;*.xml;*.html;*.css;*.js;*.py;*.c;*.cpp)",
+    "所有文件 (*.*)"
+)
+
+# 存储配置
+APP_DATA_DIR = "Nestxt/UserData"
+DATA_FILE_NAME = "data.json"
+DATA_BACKUP_SUFFIX = ".json.bak"
+```
+
+================================================================================
+8. Python API 完整接口文档
+================================================================================
+
+8.1 StorageEngine（存储引擎）
+--------------------------------------------------------------------------------
+
+类定义：
+```python
+class StorageEngine:
+    """本地文件存储引擎"""
+```
+
+初始化：
+```python
+def __init__(self):
+    """初始化存储引擎，自动创建数据文件"""
+```
+
+方法：
+
+set_item(key: str, value: str) -> dict
+- 功能：存储数据
+- 参数：
+  * key：数据键名
+  * value：数据值（JSON 字符串）
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+- 线程安全：使用 threading.Lock 保护
+
+get_item(key: str)
+- 功能：读取数据
+- 参数：
+  * key：数据键名
+- 返回：数据值（JSON 字符串）或 None
+- 线程安全：使用 threading.Lock 保护
+
+remove_item(key: str) -> dict
+- 功能：删除指定 key
+- 参数：
+  * key：数据键名
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+- 线程安全：使用 threading.Lock 保护
+
+clear() -> dict
+- 功能：清空所有数据
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+- 线程安全：使用 threading.Lock 保护
+
+8.2 Api（API 接口类）
+--------------------------------------------------------------------------------
+
+类定义：
+```python
+class Api:
+    """Python API 接口，供前端调用"""
+```
+
+初始化：
+```python
+def __init__(self):
+    self.engine = StorageEngine()
+    self._window = None
+```
+
+方法：
+
+set_window(window)
+- 功能：设置窗口引用（用于文件对话框操作）
+- 参数：
+  * window：pywebview Window 对象
+
+setItem(key: str, value: str) -> dict
+- 功能：存储数据
+- 参数：
+  * key：数据键名
+  * value：数据值（JSON 字符串）
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+getItem(key: str)
+- 功能：读取数据
+- 参数：
+  * key：数据键名
+- 返回：数据值（JSON 字符串）或 None
+
+removeItem(key: str) -> dict
+- 功能：删除指定 key
+- 参数：
+  * key：数据键名
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+clear() -> dict
+- 功能：清空所有数据
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+ping() -> str
+- 功能：测试 API 桥接是否正常
+- 返回："pong"
+
+debugLog(msg: str) -> None
+- 功能：前端调试日志输出到 Python 终端
+- 参数：
+  * msg：日志消息
+
+saveFile(content: str, suggested_name: str = 'export.txt') -> dict
+- 功能：弹出保存文件对话框，将内容写入用户选择的文件
+- 参数：
+  * content：文件内容
+  * suggested_name：建议的文件名
+- 返回：{"success": True, "path": "文件路径"} 或 {"success": False, "error": "错误信息"}
+
+importFile() -> dict
+- 功能：弹出打开文件对话框，返回文件内容
+- 返回：{"success": True, "name": "文件名", "content": "文件内容"} 或 {"success": False, "error": "错误信息"}
+
+closeWindow() -> dict
+- 功能：关闭应用程序窗口
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+clipboardCopy(text: str) -> dict
+- 功能：复制文本到剪贴板
+- 参数：
+  * text：要复制的文本
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+clipboardPaste() -> dict
+- 功能：从剪贴板获取文本
+- 返回：{"success": True, "text": "剪贴板文本"} 或 {"success": False, "error": "错误信息"}
+
+8.3 工具函数
+--------------------------------------------------------------------------------
+
+file_utils.py：
+
+save_file(window, content: str, suggested_name: str = 'export.txt') -> dict
+- 功能：弹出保存文件对话框，将内容写入用户选择的文件
+- 参数：
+  * window：pywebview Window 对象
+  * content：文件内容
+  * suggested_name：建议的文件名
+- 返回：{"success": True, "path": "文件路径"} 或 {"success": False, "error": "错误信息"}
+
+import_file(window) -> dict
+- 功能：弹出打开文件对话框，返回文件内容
+- 参数：
+  * window：pywebview Window 对象
+- 返回：{"success": True, "name": "文件名", "content": "文件内容"} 或 {"success": False, "error": "错误信息"}
+
+clipboard_utils.py：
+
+clipboard_copy(text: str) -> dict
+- 功能：复制文本到剪贴板
+- 参数：
+  * text：要复制的文本
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+clipboard_paste() -> dict
+- 功能：从剪贴板获取文本
+- 返回：{"success": True, "text": "剪贴板文本"} 或 {"success": False, "error": "错误信息"}
+
+resource_utils.py：
+
+resolve_resource_path(relative_path: str) -> str
+- 功能：解析资源文件路径
+- 参数：
+  * relative_path：相对路径
+- 返回：绝对路径
+- 特性：自动适配开发模式和打包模式
+
+================================================================================
+9. 完整事件列表与流向说明
+================================================================================
+
+9.1 事件分类列表
+--------------------------------------------------------------------------------
+
+PC 端的事件系统与 Web 端完全相同，参考《Nestxt_web_技术开发文档》第 9 章。
+
+主要事件分类：
+- 文件事件：FILE_CREATED、FILE_DELETED、FILE_RENAMED、FILE_SAVED 等
+- 文件夹事件：FOLDER_CREATED、FOLDER_DELETED、FOLDER_RENAMED 等
+- 标签页事件：TAB_OPENED、TAB_CLOSED、TAB_SWITCHED 等
+- 编辑器事件：EDITOR_SAVE、EDITOR_AUTO_SAVE、EDITOR_UPDATE 等
+- 主题事件：THEME_CHANGED
+- 视图事件：SIDEBAR_TOGGLE、SIDEBAR_RESIZE、LINE_NUM_TOGGLE 等
+- 回收站事件：TRASH_OPENED、ITEM_RESTORED、TRASH_EMPTIED 等
+- 搜索事件：SEARCH_OPENED、SEARCH_CLOSED、SEARCH_RESULTS 等
+- 拖拽事件：DRAG_START、DRAG_OVER、DRAG_DROP、DRAG_END 等
+- 版本管理事件：VERSION_SAVED、VERSION_DELETED、VERSION_RESTORED 等
+- 编码事件：ENCODING_CHANGED
+- 存储事件：storage:folders-updated、storage:files-updated 等
+
+9.2 PC 端特有事件流向
+--------------------------------------------------------------------------------
+
+【数据保存流程（PC 端）】
+用户编辑内容 → EditorController.save()
+    → FileService.saveContent(fileId, content)
+        → StorageService.saveFiles(files)
+            → StorageBridge.setItem('files', data)
+                → window.pywebview.api.setItem('nestxt_files', data)
+                    → Python Api.setItem(key, value)
+                        → StorageEngine.set_item(key, value)
+                            → 读取 data.json
+                            → 更新数据
+                            → 备份 data.json 到 data.json.bak
+                            → 写入 data.json
+                        ← 返回 {"success": True}
+                    ← 返回 {"success": True}
+                ← Promise resolve
+            ← 保存完成
+        ← signal.emit(FILE_SAVED, file)
+            → app.js 更新状态栏显示
+
+【文件导出流程（PC 端）】
+用户点击导出 → app.js
+    → EditorController.getContent()
+    → await window.pywebview.api.saveFile(content, 'export.txt')
+        → Python Api.saveFile(content, suggested_name)
+            → save_file(window, content, suggested_name)
+                → window.create_file_dialog(webview.SAVE_DIALOG, ...)
+                → 用户选择文件路径
+                → 写入文件内容
+            ← 返回 {"success": True, "path": "文件路径"}
+        ← 返回 {"success": True, "path": "文件路径"}
+    → App.showMessage('导出成功')
+
+【文件导入流程（PC 端）】
+用户点击导入 → app.js
+    → await window.pywebview.api.importFile()
+        → Python Api.importFile()
+            → import_file(window)
+                → window.create_file_dialog(webview.OPEN_DIALOG, ...)
+                → 用户选择文件
+                → 读取文件内容（多编码检测）
+            ← 返回 {"success": True, "name": "文件名", "content": "文件内容"}
+        ← 返回 {"success": True, "name": "文件名", "content": "文件内容"}
+    → FileService.create(result.name, null, result.content)
+    → SidebarController.render()
+
+================================================================================
+10. 打包与部署
+================================================================================
+
+10.1 开发环境运行
+--------------------------------------------------------------------------------
+
+环境要求：
+- Python 3.x（推荐 3.8+）
+- pywebview
+- pywin32（Windows 平台）
+
+安装依赖：
+```bash
+pip install pywebview pywin32
+```
+
+运行应用：
+```bash
+cd Nestxt_PC/py
+python app.py
+```
+
+开发模式特点：
+- 资源文件相对于项目根目录
+- 修改前端代码后刷新窗口即可生效
+- 数据保存在 data/data.json（开发环境）
+
+10.2 PyInstaller 打包配置
+--------------------------------------------------------------------------------
+
+build.spec 配置文件：
+```python
+# -*- mode: python ; coding: utf-8 -*-
+
+import os
+import sys
+from pathlib import Path
+
+# 获取项目根目录
+PROJECT_ROOT = Path(SPECPATH).parent if 'SPECPATH' in dir() else Path(__file__).parent
+
+block_cipher = None
+
+a = Analysis(
+    ['py/app.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        # Web 前端文件
+        ('Web', 'Web'),
+        # 图标文件
+        ('icon_Dark.ico', '.'),
+    ],
+    hiddenimports=[
+        'webview',
+        'webview.platforms.edgechromium',
+        'webview.platforms.winforms',
+        'clr',
+        'pythonnet',
+        'ctypes',
+        'win32gui',
+        'win32con',
+        'win32event',
+        'win32clipboard',
+        'winerror',
+        'portalocker',
+        'psutil',
+        # core 包
+        'core',
+        'core.api',
+        'core.storage',
+        'core.singleton',
+        'core.window',
+        # utils 包
+        'utils',
+        'utils.clipboard_utils',
+        'utils.file_utils',
+        'utils.resource_utils',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='Nestxt',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,  # 不显示控制台
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='icon_Dark.ico',  # exe 图标
+)
+```
+
+关键配置说明：
+- datas：指定需要打包的资源文件
+- hiddenimports：指定需要打包但 PyInstaller 无法自动检测的模块
+- console=False：不显示控制台窗口
+- icon：指定 exe 文件图标
+
+10.3 打包流程
+--------------------------------------------------------------------------------
+
+步骤一：安装 PyInstaller
+```bash
+pip install pyinstaller
+```
+
+步骤二：执行打包
+```bash
+cd Nestxt_PC
+pyinstaller build.spec
+```
+
+或使用批处理脚本：
+```bash
+Package.bat
+```
+
+步骤三：查看输出
+- 打包完成后，exe 文件位于 dist/Nestxt.exe
+- 打包临时文件位于 Build/ 目录
+
+步骤四：测试打包结果
+- 双击 dist/Nestxt.exe 运行
+- 验证所有功能正常
+- 检查数据文件是否正确保存到 %APPDATA%/Nestxt/UserData/data.json
+
+10.4 部署注意事项
+--------------------------------------------------------------------------------
+
+1. 单文件分发
+- PyInstaller 打包成单个 exe 文件
+- 包含所有依赖和资源
+- 用户无需安装 Python 环境
+
+2. 数据目录
+- 数据保存在 %APPDATA%/Nestxt/UserData/data.json
+- 首次运行时自动创建目录和文件
+- 用户卸载应用后数据依然保留（需手动清理）
+
+3. 图标设置
+- exe 文件使用 icon_Dark.ico 作为图标
+- 窗口图标在窗口加载完成后设置
+- 使用 Win32 API 设置图标（ICON_BIG 和 ICON_SMALL）
+
+4. 版本更新
+- 用户只需替换 exe 文件即可更新
+- 数据文件不受影响
+- 建议：提供自动更新机制（可选）
+
+5. 卸载
+- 删除 exe 文件即可
+- 如需清理数据，删除 %APPDATA%/Nestxt/UserData/ 目录
+
+10.5 系统要求
+--------------------------------------------------------------------------------
+
+操作系统：
+- Windows 10/11（推荐）
+- Windows 7/8（需要 EdgeChromium 运行时）
+
+硬件要求：
+- CPU：1 GHz 或更快
+- 内存：2 GB 或更多
+- 磁盘空间：100 MB（应用）+ 数据空间
+
+运行时依赖：
+- 打包后无需安装 Python
+- pywebview 使用 EdgeChromium 渲染引擎（Windows 10/11 自带）
+- Windows 7/8 需要安装 EdgeChromium 运行时
+
+================================================================================
+11. 错误处理与降级策略
+================================================================================
+
+11.1 存储异常处理
+--------------------------------------------------------------------------------
+
+问题场景：
+- 数据文件损坏或丢失
+- 磁盘空间不足
+- 文件权限问题
+
+当前实现：
+```python
+def _write_data(self, data: dict) -> bool:
+    try:
+        # 备份现有文件
+        if self._data_path.exists():
+            backup_path = self._data_path.with_suffix('.json.bak')
+            with open(self._data_path, 'r', encoding='utf-8') as src:
+                content = src.read()
+            with open(backup_path, 'w', encoding='utf-8') as dst:
+                dst.write(content)
+        
+        # 写入新数据
+        with open(self._data_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"[StorageEngine] 写入数据失败: {e}")
+        return False
+```
+
+降级策略：
+1. 写入失败时返回错误信息，前端提示用户
+2. 自动备份机制，可以从 .bak 文件恢复
+3. 建议用户定期导出备份数据
+
+改进建议：
+- 添加数据文件完整性校验（如 checksum）
+- 实现自动恢复机制（从备份恢复）
+- 提供存储空间检测，在接近限制时警告
+
+11.2 文件操作异常处理
+--------------------------------------------------------------------------------
+
+问题场景：
+- 文件对话框取消
+- 文件读取失败（编码问题）
+- 文件写入失败（权限问题）
+
+当前实现：
+```python
+def save_file(window, content: str, suggested_name: str = 'export.txt') -> dict:
+    try:
+        result = window.create_file_dialog(webview.SAVE_DIALOG, ...)
+        if not result:
+            return {"success": False, "error": "用户取消"}
+        
+        file_path = result[0]
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return {"success": True, "path": file_path}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+```
+
+降级策略：
+1. 用户取消对话框：返回错误信息，不中断应用
+2. 文件读取失败：尝试多种编码（UTF-8、GBK、GB2312、Latin-1）
+3. 文件写入失败：返回错误信息，前端提示用户
+
+11.3 窗口异常处理
+--------------------------------------------------------------------------------
+
+问题场景：
+- 窗口创建失败
+- 图标设置失败
+- 窗口关闭时资源清理失败
+
+当前实现：
+```python
+def _set_window_icon():
+    try:
+        icon_path = resolve_resource_path(ICON_FILE)
+        if not os.path.exists(icon_path):
+            print(f"[警告] 图标文件不存在: {icon_path}")
+            return
+        
+        hwnd = win32gui.FindWindow(None, WINDOW_TITLE)
+        if hwnd:
+            icon_handle = ctypes.windll.user32.LoadImageW(...)
+            if icon_handle:
+                win32gui.SendMessage(hwnd, win32con.WM_SETICON, ...)
+    except Exception as e:
+        print(f"[警告] 设置窗口图标失败: {e}")
+```
+
+降级策略：
+1. 图标设置失败：应用继续运行，使用默认图标
+2. 窗口关闭时资源清理失败：系统自动释放资源
+
+11.4 全局异常捕获
+--------------------------------------------------------------------------------
+
+当前实现：
+```python
+def main():
+    try:
+        # 应用主逻辑
+        start()
+    except Exception as e:
+        print(f"[Nestxt] 事件循环异常: {e}")
+    finally:
+        release_mutex()
+```
+
+降级策略：
+1. 捕获未处理异常，防止应用崩溃
+2. 释放互斥体，允许重新启动
+3. 输出错误日志，便于调试
+
+改进建议：
+- 添加全局异常处理器，捕获所有未处理异常
+- 实现异常上报机制（可选，需用户同意）
+- 提供"重置应用"功能，清除所有数据恢复到初始状态
+
+================================================================================
+12. 安全性考虑
+================================================================================
+
+12.1 本地数据安全
+--------------------------------------------------------------------------------
+
+风险场景：
+- 数据文件被其他应用访问
+- 数据文件被恶意篡改
+- 数据文件损坏导致数据丢失
+
+当前实现：
+- 数据保存在 %APPDATA%/Nestxt/UserData/data.json
+- 使用 JSON 格式存储，明文可读
+- 每次写入前自动创建备份
+
+安全建议：
+1. 数据加密（可选）
+   - 使用 cryptography 库对敏感内容进行加密
+   - 加密密钥存储在内存中，不保存到文件
+
+2. 数据完整性校验
+   - 添加 HMAC 签名，防止数据被篡改
+   - 加载时验证签名，失败则提示用户
+
+3. 访问控制
+   - 使用文件权限控制（Windows ACL）
+   - 限制只有当前用户可以访问数据文件
+
+当前安全级别：
+- 适合个人使用，数据保存在本地
+- 不适合存储敏感信息（如密码、密钥）
+- 建议用户定期导出备份，防止数据丢失
+
+12.2 文件操作安全
+--------------------------------------------------------------------------------
+
+风险场景：
+- 导入的文件包含恶意内容
+- 导出的文件被篡改
+- 文件路径注入攻击
+
+当前实现：
+1. 文件内容处理
+   - 导入的文件内容作为纯文本处理
+   - 编辑器使用 textarea，内容不会被浏览器解析为 HTML
+   - 语法高亮使用正则匹配，不执行用户内容
+
+2. 文件路径验证
+   - 使用 os.path.basename() 提取文件名
+   - 避免路径遍历攻击
+
+3. 编码检测
+   - 尝试多种编码（UTF-8、GBK、GB2312、Latin-1）
+   - 避免编码问题导致的数据损坏
+
+防护措施：
+- 所有文件内容作为纯文本处理
+- 不使用 eval()、exec() 等动态执行
+- 文件路径严格验证
+
+12.3 单实例控制安全
+--------------------------------------------------------------------------------
+
+风险场景：
+- 互斥体被恶意释放
+- 多个实例同时运行导致数据冲突
+
+当前实现：
+- 使用 Windows 互斥体 (Mutex) 实现单实例控制
+- 互斥体名称包含 GUID，难以猜测
+
+安全建议：
+1. 互斥体名称使用强随机 GUID
+2. 定期检查互斥体状态
+3. 添加进程 ID 验证
+
+12.4 安全最佳实践建议
+--------------------------------------------------------------------------------
+
+对用户的建议：
+1. 定期导出备份数据，防止数据丢失
+2. 不要在公共电脑上存储敏感信息
+3. 定期更新应用到最新版本
+4. 使用强密码保护 Windows 用户账户
+
+对开发者的建议：
+1. 实现数据加密选项（可选功能）
+2. 添加数据完整性校验
+3. 定期安全审计，检查漏洞
+4. 实现异常监控和上报机制
+5. 提供数据恢复功能
+
+================================================================================
+13. PC 端与 Web 端差异对比
+================================================================================
+
+13.1 架构差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 纯前端架构（HTML/CSS/JS）
+- 所有代码在浏览器中运行
+- 无需后端服务器
+
+PC 端：
+- 混合架构（Python 后端 + Web 前端）
+- 前端代码在 pywebview 窗口中运行
+- Python 后端提供系统能力
+- 通过 pywebview API 桥接通信
+
+13.2 存储差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 使用浏览器 localStorage
+- 存储容量限制（通常 5-10MB）
+- 数据存储在浏览器中
+- 清除浏览器缓存会丢失数据
+- 跨设备数据无法同步
+
+PC 端：
+- 使用本地文件存储（%APPDATA%/Nestxt/UserData/data.json）
+- 存储容量更大（仅受磁盘空间限制）
+- 数据保存在系统 AppData 目录
+- 不受浏览器缓存清理影响
+- 跨设备数据无法同步（需要云同步功能）
+
+13.3 功能差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 无法访问系统剪贴板（需要用户授权）
+- 无法使用系统文件对话框
+- 无法设置窗口图标
+- 无法控制窗口行为
+
+PC 端：
+- 可以访问系统剪贴板
+- 可以使用系统文件对话框
+- 可以设置窗口图标
+- 可以控制窗口行为（如关闭窗口）
+- 支持单实例控制
+
+13.4 部署差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 部署到 Netlify/Vercel 等平台
+- 用户通过浏览器访问
+- 无需安装
+- 跨平台（任何支持现代浏览器的设备）
+
+PC 端：
+- 打包成单个 exe 文件
+- 用户下载并运行 exe 文件
+- 无需安装 Python 环境
+- 仅支持 Windows 平台（当前）
+- 可以添加安装程序（可选）
+
+================================================================================
+文档结束
+================================================================================
+
+如有任何问题或建议，请联系开发者：
+作者：YFan
+邮箱：603349580@qq.com
+微信：a603349580

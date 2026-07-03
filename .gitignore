@@ -1,0 +1,282 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.dll
+
+# Python distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.spec
+*.manifest
+*.exe.manifest
+*.pdb
+*.map
+Build/
+dist/
+*.pyz
+*.pyz?
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+.venv
+.virtualenv
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.bak
+*.tmp
+*.temp
+*.log
+*.pydevproject
+.settings/
+*.project
+*.classpath
+*.iml
+*.iws
+.idea_modules/
+*.orig
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Application specific
+data/
+*.data
+UserData/
+*.json.bak
+*.json.tmp
+*.json.old
+Nestxt.exe
+Nestxt_debug.exe
+*.exe
+*.pkg
+*.dmg
+*.app
+*.portable
+
+# Logs
+logs/
+*.log
+*-debug.log
+*-error.log
+
+# Config files (user-specific)
+config.local.ini
+.env
+*.local.json
+*.user.json
+settings.user.py
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+.cache/
+*.download
+*.partial
+*.incomplete
+
+# Screenshots / media
+screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.ico
+!.icon_Dark.ico
+*.icns
+*.svg
+!Web/icon/**/*.svg
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.rej
+*.patch
+*.diff
+
+# Compressed files (unless needed)
+*.zip
+*.tar
+*.gz
+*.bz2
+*.7z
+*.rar
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytest_cache/
+*.cover
+*.coverage
+coverage.xml
+*.pytest_cache
+
+# Documentation
+docs/_build/
+docs/api/
+*.doctree
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+requirements-dev.txt
+requirements-test.txt
+Pipfile
+Pipfile.lock
+poetry.lock
+pyproject.toml
+
+# Logging and monitoring
+*.monitoring
+*.metrics
+*.stats
+
+# OS-specific
+.LSOverride
+.fseventsd
+.Trashes
+.Spotlight-V100
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDouble
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Python type checking
+*.pyi
+*.typed
+.stubs/
+
+# Binary files
+*.class
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.ncb
+*.sdf
+*.opensdf
+*.suo
+*.user
+*.cache
+*.ilk
+*.exp
+*.lib
+*.pch
+
+# Profiling
+*.prof
+*.gcda
+*.gcno
+*.gcov
+
+# Version control
+*.orig
+*.mine
+*.working
+*.local
+.merge_file_*
+
+# Debug files
+*.debug
+*.symbols
+*.pdb
+*.idb
+*.ipdb
+
+# Security
+*.pem
+*.key
+*.crt
+*.csr
+*.jks
+*.keystore
+*.truststore
+.secrets/
+secrets/
+*.secret
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+.envrc
+
+# Project specific
+Nestxt.spec
+Package.bat
+Package.ps1
+Package.sh
+build-script.bat
+*.pyc
+*.pyo
+*.pyd
+.python-version
+.coverage
+.mypy_cache
+.ruff_cache
