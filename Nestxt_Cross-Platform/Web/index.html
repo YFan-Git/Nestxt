@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="loading">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nestxt 文本编辑器</title>
+    <link rel="icon" type="image/png" href="icon/icon.png">
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/tree.css">
+    <link rel="stylesheet" href="css/tabs.css">
+    <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/syntax-ui.css">
+    <link rel="stylesheet" href="css/version.css">
+    <link rel="stylesheet" href="css/search.css">
+    <link rel="stylesheet" href="css/dialogs.css">
+    <link rel="stylesheet" href="css/treeview.css">
+</head>
+<body class="startup" tabindex="-1">
+    <div class="app-container">
+        <!-- ===== 标题栏 ===== -->
+        <div class="titlebar">
+            <span class="titlebar-title"><img src="icon/icon.png" alt="logo" class="titlebar-logo titlebar-logo-light"><img src="icon/icon_Dark.png" alt="logo" class="titlebar-logo titlebar-logo-dark"><span data-icon="TITLE_LIGHT"></span><span data-icon="TITLE_DARK"></span></span>
+            <div class="titlebar-actions">
+                <button class="titlebar-btn" id="btn-settings" title="设置"><span data-icon="SETTINGS"></span> 设置</button>
+                <div class="settings-menu" id="settings-menu" style="display:none">
+                    <div class="settings-menu-item" data-action="export-data"><span data-icon="EXPORT"></span> 导出用户数据</div>
+                    <div class="settings-menu-item" data-action="import-data"><span data-icon="IMPORT"></span> 导入用户数据</div>
+                    <div class="settings-menu-item" data-action="autosave-setting"><span data-icon="TIMER"></span> 自动保存设置</div>
+                    <div class="settings-menu-item" data-action="syntax-setting"><span data-icon="PALETTE"></span> 语法高亮设置</div>
+                    <div class="settings-menu-item" data-action="encoding-setting"><span data-icon="TEXT_STYLE"></span> 编码设置</div>
+                    <div class="settings-menu-item" data-action="online-docs" data-url="docs/index.html"><span data-icon="BOOK_OPEN"></span> 在线文档</div>
+                    <div class="settings-menu-item" data-action="about"><span data-icon="INFO"></span> 关于</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 主区域 ===== -->
+        <div class="main-area">
+            <!-- 侧边栏 -->
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-header-title">文件浏览器</span>
+                    <button class="sidebar-header-btn" data-action="new-file" title="新建文件"><span data-icon="FILE_ADD"></span></button>
+                    <button class="sidebar-header-btn" data-action="new-folder" title="新建文件夹"><span data-icon="FOLDER_ADD"></span></button>
+                </div>
+                <!-- 搜索框（常驻显示） -->
+                <div class="search-panel">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="搜索文件名或内容...">
+                        <button class="search-btn" id="btn-search" title="搜索 (Ctrl+F)"><span data-icon="SEARCH"></span></button>
+                    </div>
+                    <div class="search-results"></div>
+                </div>
+                <div class="sidebar-tree">
+                    <div class="sidebar-empty">加载中...</div>
+                </div>
+                <!-- 侧边栏底部：回收站 + 主题切换 -->
+                <div class="sidebar-footer-bar">
+                    <div class="sidebar-footer" data-action="toggle-trash">
+                        <span class="sidebar-footer-icon"><span data-icon="DELETE"></span></span>
+                        <span class="sidebar-footer-label">回收站</span>
+                        <span class="sidebar-footer-badge">0</span>
+                    </div>
+                    <div class="sidebar-theme-bar">
+                        <label class="theme-toggle" id="theme-toggle" title="切换主题">
+                            <span class="theme-toggle-icon"><span data-icon="SUN"></span></span>
+                            <span class="theme-toggle-track">
+                                <span class="theme-toggle-thumb"></span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <!-- 回收站面板 -->
+                <div class="trash-panel" style="display:none">
+                    <div class="trash-header">
+                        <span><span data-icon="DELETE"></span> 回收站</span>
+                        <button class="trash-btn-empty" title="清空回收站">清空</button>
+                        <button class="trash-btn-close" title="关闭"><span data-icon="CLOSE_SMALL"></span></button>
+                    </div>
+                    <div class="trash-list"></div>
+                </div>
+                <div class="sidebar-resizer"></div>
+            </div>
+
+            <!-- 编辑器区域 -->
+            <div class="editor-area">
+                <!-- 标签页栏 -->
+                <div class="tabbar">
+                    <div class="tabs-container" id="tabs-container">
+                        <div class="tabs-empty">未打开文件</div>
+                    </div>
+                    <!-- 标签页右键菜单 -->
+                    <div class="tab-context-menu" id="tab-context-menu">
+                        <div class="tab-context-menu-item" data-action="close">关闭</div>
+                        <div class="tab-context-menu-item tab-context-menu-sep"></div>
+                        <div class="tab-context-menu-item" data-action="close-all">关闭全部</div>
+                    </div>
+                </div>
+
+                <!-- 编辑工具栏 -->
+                <div class="editor-toolbar">
+                    <button class="toolbar-btn" id="btn-import" title="导入文件"><span data-icon="UPLOAD"></span> 导入</button>
+                    <div class="toolbar-sep"></div>
+                    <button class="toolbar-btn" id="btn-save" title="保存 (Ctrl+S)"><span data-icon="SAVE"></span> 保存</button>
+                    <div class="toolbar-sep"></div>
+                    <button class="toolbar-btn" id="btn-copy-all" title="全选并复制全部内容"><span data-icon="COPY"></span> 全选复制</button>
+                    <div class="toolbar-sep"></div>
+                    <div class="toolbar-group">
+                        <button class="toolbar-btn" id="btn-font-minus" title="缩小字号">A−</button>
+                        <span class="toolbar-fontsize" id="fontsize-label">14</span>
+                        <button class="toolbar-btn" id="btn-font-plus" title="增大字号">A+</button>
+                    </div>
+                    <div class="toolbar-sep"></div>
+                    <button class="toolbar-btn" id="btn-export" title="导出为 .txt"><span data-icon="DOWNLOAD"></span> 导出</button>
+                    <div class="toolbar-sep"></div>
+                    <button class="toolbar-btn" id="btn-version" title="版本管理"><span data-icon="BRANCH"></span> 版本</button>
+                    <div class="toolbar-sep"></div>
+                    <button class="toolbar-btn" id="btn-treeview" title="树图可视化"><span data-icon="TREEVIEW"></span> 树图</button>
+                </div>
+
+                <!-- 编辑器主体区域（编辑器 + 版本面板） -->
+                <div class="editor-main">
+                    <div class="editor-panel">
+                        <div class="editor-wrapper">
+                            <div class="line-numbers"></div>
+                            <textarea class="editor-textarea" placeholder="选择文件开始编辑，或拖入 .txt 文件" spellcheck="false"></textarea>
+                        </div>
+                        <!-- 树图可视化面板 -->
+                        <div class="treeview-panel" style="display:none">
+                            <div class="treeview-header">
+                                <span><span data-icon="TREEVIEW"></span> 树图可视化</span>
+                                <button class="treeview-btn-close" title="关闭树图"><span data-icon="CLOSE"></span></button>
+                            </div>
+                            <div class="treeview-content"></div>
+                        </div>
+                    </div>
+                    <!-- 版本面板拖拽条 -->
+                    <div class="version-resizer"></div>
+                    <!-- 版本管理面板（右侧滑入） -->
+                    <div class="version-panel">
+                        <div class="version-header">
+                            <span class="version-header-title"><span data-icon="BRANCH"></span> 版本管理</span>
+                            <span class="version-count" id="version-count">0/20</span>
+                            <button class="version-btn-close" title="关闭版本面板"><span data-icon="CLOSE"></span></button>
+                        </div>
+                        <div class="version-list"><div class="version-save-bar"><button class="version-save-btn" disabled>保存当前版本</button></div><div class="version-empty">暂无保存的版本<br><span class="version-empty-hint">点击上方按钮保存当前内容为版本</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 状态栏 ===== -->
+        <div class="statusbar">
+            <span class="status-item">Nestxt v1.0</span>
+            <span class="status-item" id="status-save">就绪</span>
+                <span class="status-item" id="status-word-count">字数: 0</span>
+                <span class="status-item clickable" id="status-encoding">UTF-8</span>
+                <span class="status-item clickable" id="status-wordwrap" style="margin-left:auto">自动换行: 关</span>
+                <span class="status-item clickable" id="status-syntax-highlight">语法高亮: 开</span>
+                <span class="status-item clickable" id="status-line-num">行号: 开</span>
+                <span class="status-item" id="status-tab-count">标签: 0/10</span>
+        </div>
+    </div>
+
+    <!-- ===== 右键菜单 ===== -->
+    <div class="context-menu"></div>
+
+    <!-- ===== 版本保存弹窗 ===== -->
+    <div class="modal-overlay" id="version-modal" style="display:none">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <span><span data-icon="SAVE"></span> 保存版本</span>
+                <button class="modal-close" id="modal-close"><span data-icon="CLOSE"></span></button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label">版本名称</label>
+                <input type="text" class="modal-input" id="version-name-input" placeholder="输入版本名称..." maxlength="50">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-cancel" id="modal-cancel">取消</button>
+                <button class="modal-btn modal-btn-confirm" id="modal-confirm">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 焦点控制：确保启动时焦点在 body 上，不落在任何按钮 ===== -->
+    <script>
+        (function() {
+            // DOM 加载完成后将焦点移到 body
+            function setFocusToBody() {
+                if (document.body) {
+                    document.body.focus();
+                }
+            }
+            
+            // 如果 DOM 已加载完成，立即执行；否则监听 DOMContentLoaded
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setFocusToBody);
+            } else {
+                setFocusToBody();
+            }
+            
+            // pywebview 环境下，窗口显示后可能重新分配焦点，延迟再执行一次
+            if (window.addEventListener) {
+                window.addEventListener('load', function() {
+                    setTimeout(setFocusToBody, 50);
+                });
+            }
+        })();
+    </script>
+
+    <!-- ===== JavaScript 加载（defer 并行下载，DOMContentLoaded 后按顺序执行） ===== -->
+    <!-- 核心框架 -->
+    <script defer src="js/core/Signal.js"></script>
+    <script defer src="js/core/Autoload.js"></script>
+    <script defer src="js/core/Constants.js"></script>
+    <script defer src="js/core/Icons.js"></script>
+
+    <!-- 数据服务层 -->
+    <script defer src="js/Bridge/StorageBridge.js"></script>
+    <script defer src="js/Bridge/SystemBridge.js"></script>
+    <script defer src="js/services/StorageService.js"></script>
+    <script defer src="js/services/TextFileReader.js"></script>
+    <script defer src="js/services/FolderService.js"></script>
+    <script defer src="js/services/FileService.js"></script>
+    <script defer src="js/services/TabService.js"></script>
+    <script defer src="js/services/TrashService.js"></script>
+    <script defer src="js/services/AutoSaveService.js"></script>
+    <script defer src="js/services/TimeService.js"></script>
+
+    <!-- UI 控制器层 -->
+    <script defer src="js/controllers/ThemeController.js"></script>
+    <!-- Sidebar 子模块 -->
+    <script defer src="js/controllers/Sidebar/FolderTreeStateManager.js"></script>
+    <script defer src="js/controllers/Sidebar/FolderTreeRenderer.js"></script>
+    <script defer src="js/controllers/Sidebar/FolderTreeEventHandler.js"></script>
+    <script defer src="js/controllers/Sidebar/InlineRenameHelper.js"></script>
+    <script defer src="js/controllers/SidebarController.js"></script>
+    <script defer src="js/controllers/TabController.js"></script>
+    <script defer src="js/controllers/EditorController.js"></script>
+    <!-- EditorController 子模块 -->
+    <script defer src="js/controllers/editor/EditorController.linenum.js"></script>
+    <script defer src="js/controllers/editor/EditorController.syntax.js"></script>
+    <script defer src="js/controllers/editor/EditorController.treeview.js"></script>
+    <script defer src="js/controllers/editor/EditorController.contextmenu.js"></script>
+    <script defer src="js/controllers/editor/EditorController.version.js"></script>
+    <script defer src="js/controllers/ContextMenuController.js"></script>
+    <script defer src="js/controllers/SearchController.js"></script>
+    <script defer src="js/controllers/DragController.js"></script>
+    <script defer src="js/controllers/EncodingController.js"></script>
+
+    <!-- App 子模块 -->
+    <script defer src="js/app/dialogs.js"></script>
+    <script defer src="js/app/version-panel.js"></script>
+    <script defer src="js/app/trash-panel.js"></script>
+    <script defer src="js/app/file-ops.js"></script>
+    <script defer src="js/app/settings.js"></script>
+
+    <!-- 应用入口 -->
+    <script defer src="js/app.js"></script>
+</body>
+</html>

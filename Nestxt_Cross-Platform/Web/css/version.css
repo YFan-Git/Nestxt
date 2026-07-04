@@ -1,0 +1,244 @@
+/* ============================================
+   version.css - 版本管理面板
+   ============================================ */
+
+/* 版本面板拖拽调整器 */
+.version-resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+.version-resizer:hover,
+.version-resizer.active {
+    background: var(--accent);
+}
+
+.version-panel {
+    width: 260px;
+    min-width: 260px;
+    background: var(--bg-sidebar);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.version-header {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 6px;
+}
+
+.version-header-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.version-btn-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 6px;
+    font-size: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+.version-btn-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.version-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.version-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    padding-right: 32px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    transition: all 0.15s;
+    position: relative;
+}
+
+.version-item:hover {
+    border-color: var(--accent);
+}
+
+.version-item-active {
+    border-color: var(--accent) !important;
+    background: rgba(122, 162, 247, 0.08);
+}
+
+.version-check {
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+    padding: 8px 12px 8px 4px;
+    margin: -8px 0 -8px -4px;
+}
+
+.version-item-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.version-item-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.3;
+    width: 90px;
+}
+
+.version-item-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.version-item-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 删除按钮：右上角 */
+.version-del-btn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+.version-del-btn:hover {
+    color: var(--danger);
+    background: rgba(229, 83, 75, 0.1);
+}
+
+/* 版本重命名输入框 */
+.version-rename-input {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-input);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 2px 6px;
+    outline: none;
+    width: 100%;
+    max-width: 160px;
+}
+
+.version-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 40px 16px;
+    line-height: 1.8;
+}
+
+.version-empty-hint {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    opacity: 0.7;
+    margin-top: 4px;
+}
+
+.version-save-bar {
+    display: flex;
+    justify-content: center;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.version-save-btn {
+    width: 100%;
+    padding: 6px 12px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.version-save-btn .btn-icon {
+    width: 14px;
+    height: 14px;
+}
+.version-save-btn:hover {
+    opacity: 0.85;
+}
+.version-save-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* 版本计数（以文字宽度为准，紧贴关闭按钮） */
+.version-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+
+/* ===== 复选框图标 ===== */
+.checkbox-icon {
+    width: 22px;
+    height: 22px;
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+/* 亮色主题显示蓝色，暗色主题显示绿色 */
+[data-theme="light"] .checkbox-dark {
+    display: none;
+}
+[data-theme="dark"] .checkbox-light {
+    display: none;
+}

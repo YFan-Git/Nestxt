@@ -1,0 +1,289 @@
+/* ============================================
+   syntax-ui.css - 语法高亮设置UI（规则列表 + 编辑表单 + 帮助框）
+   ============================================ */
+
+.syntax-modal .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.syntax-counter {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: normal;
+    margin-left: auto;
+    background: var(--bg-hover);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.syntax-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: all 0.15s;
+}
+
+.syntax-modal-close:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.syntax-modal {
+    width: 520px;
+    max-width: 90vw;
+    min-width: 400px;
+}
+
+.syntax-modal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 200px;
+    max-height: 420px;
+    padding-right: 4px;
+}
+
+.syntax-modal .modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.syntax-modal .modal-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 3px;
+}
+
+.syntax-rule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.syntax-empty {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 32px 0;
+    font-size: 13px;
+}
+
+.syntax-rule-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.syntax-rule-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
+}
+
+.syntax-rule-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.syntax-rule-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.syntax-rule-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.syntax-rule-type {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.syntax-rule-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.syntax-btn-edit,
+.syntax-btn-delete {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.syntax-btn-edit .btn-icon {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+}
+
+.syntax-btn-edit:hover {
+    background: rgba(122, 162, 247, 0.15);
+}
+
+.syntax-btn-edit:hover .btn-icon {
+    opacity: 1;
+}
+
+.syntax-btn-delete {
+    color: var(--danger);
+}
+
+.syntax-btn-delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-hover);
+}
+
+/* 语法规则编辑表单 */
+.syntax-form-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.syntax-form-group label {
+    width: 90px;
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.syntax-form-group input[type="text"],
+.syntax-form-group select {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.syntax-form-group input[type="text"]:focus,
+.syntax-form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+}
+
+.syntax-form-group select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999fb5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+}
+
+.syntax-form-group input[type="color"] {
+    width: 40px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 2px;
+    background: var(--input-bg);
+}
+
+.syntax-color-picker-btn {
+    display: inline-block;
+    width: 36px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.12s;
+}
+
+.syntax-color-picker-btn:hover {
+    border-color: var(--accent);
+    transform: scale(1.05);
+}
+
+.syntax-color-hex-input {
+    padding: 8px 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.syntax-color-hex-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.15);
+}
+
+/* 语法帮助框 */
+.syntax-help-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.syntax-help-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.syntax-help-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+.syntax-help-item:last-child {
+    margin-bottom: 0;
+}
+
+.syntax-help-item code {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 100px;
+}
+
+.syntax-help-item span {
+    color: var(--text-muted);
+}

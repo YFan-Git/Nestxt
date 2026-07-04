@@ -1,0 +1,9 @@
+{
+  "nestxt_tabs": "[]",
+  "nestxt_theme": "\"light\"",
+  "nestxt_syntax": "[{\"name\":\"数字\",\"type\":\"number\",\"color\":\"#ff6b6b\",\"pattern\":\"\"},{\"name\":\"\\\" \\\"\",\"type\":\"custom\",\"color\":\"#399ddb\",\"pattern\":\"\\\".*?\\\"\"},{\"name\":\"' '\",\"type\":\"custom\",\"color\":\"#e20887\",\"pattern\":\"'.*?'\"},{\"name\":\"【】\",\"type\":\"custom\",\"color\":\"#1fbec1\",\"pattern\":\"\\\\【.*?\\\\】\"},{\"name\":\"[]\",\"type\":\"custom\",\"color\":\"#8cc71f\",\"pattern\":\"\\\\[.*?\\\\]\"},{\"name\":\"# 注释\",\"type\":\"custom\",\"color\":\"#9e9e9e\",\"pattern\":\"#.*\"},{\"name\":\"Word 单词\",\"type\":\"custom\",\"color\":\"#268c85\",\"pattern\":\"\\\\b\\\\w+\\\\b\"}]",
+  "nestxt_files": "[]",
+  "nestxt_activeTab": "null",
+  "nestxt_editing_versions": "{}",
+  "nestxt_trash": "[{\"id\":1,\"type\":\"file\",\"name\":\"新建笔记.txt\",\"parentId\":null,\"content\":\"\",\"deletedAt\":\"2026-06-30T22:37:28.914Z\"}]"
+}
