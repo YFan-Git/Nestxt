@@ -1,0 +1,2331 @@
+================================================================================
+                    Nestxt Web+PC 跨平台技术开发文档
+================================================================================
+
+版本：1.0
+日期：2026-07-04
+作者：YFan
+
+================================================================================
+目录
+================================================================================
+
+1. 项目概述
+2. 双端统一架构设计
+   2.1 架构总览
+   2.2 三层架构详解
+   2.3 引擎注入机制
+   2.4 双端开发环境测试
+3. 项目结构
+   3.1 完整目录结构
+   3.2 前端模块说明
+   3.3 Python 后端模块说明
+4. 桥接层（Bridge Layer）
+   4.1 StorageBridge - 存储桥接层
+   4.2 SystemBridge - 系统能力桥接层
+   4.3 桥接层设计原则
+5. 核心模块说明
+   5.1 核心层（Core）
+   5.2 服务层（Services）
+   5.3 控制器层（Controllers）
+   5.4 应用层（App）
+   5.5 Python 后端层（仅 PC 端）
+6. 关键技术实现
+   6.1 事件驱动架构
+   6.2 MVC 分层模式
+   6.3 三层存储架构
+   6.4 语法高亮实现
+   6.5 多格式文本读取与编码处理
+   6.6 版本管理系统
+   6.7 行号与自动换行同步
+   6.8 文件树交互优化
+   6.9 单实例控制（PC 端）
+   6.10 本地文件存储（PC 端）
+   6.11 pywebview 桥接机制（PC 端）
+   6.12 资源路径自适应（PC 端）
+7. 开发过程中的关键问题与解决方案
+   7.1 语法高亮层与输入层同步问题
+   7.2 版本管理数据覆盖问题
+   7.3 双击重命名失效问题
+   7.4 拖拽性能问题
+   7.5 点击响应延迟问题
+   7.6 数据持久化可靠性问题
+   7.7 窗口关闭时数据丢失问题
+   7.8 多实例运行冲突问题
+   7.9 打包后资源文件路径问题
+   7.10 存储引擎异步调用问题
+8. 性能优化
+   8.1 渲染优化
+   8.2 存储优化
+   8.3 语法高亮优化
+   8.4 拖拽优化
+   8.5 启动性能优化
+   8.6 内存管理
+9. 核心数据结构定义
+   9.1 文件夹接口
+   9.2 文件接口
+   9.3 版本接口
+   9.4 回收站项目接口
+   9.5 语法规则接口
+   9.6 存储键常量
+10. 服务层公开 API 方法签名
+    10.1 StorageBridge（存储桥接层）
+    10.2 SystemBridge（系统能力桥接层）
+    10.3 StorageService（数据持久化服务）
+    10.4 FolderService（文件夹管理服务）
+    10.5 FileService（文件管理服务）
+    10.6 TabService（标签页管理服务）
+    10.7 TrashService（回收站管理服务）
+    10.8 AutoSaveService（自动保存服务）
+11. 完整事件列表与流向说明
+    11.1 事件分类列表
+    11.2 典型事件流向图
+    11.3 PC 端特有事件流向
+12. Python API 完整接口文档
+    12.1 StorageEngine（存储引擎）
+    12.2 Api（API 接口类）
+    12.3 工具函数
+13. 打包与部署
+    13.1 Web 端部署
+    13.2 PC 端开发环境运行
+    13.3 PC 端 PyInstaller 打包
+    13.4 系统要求
+14. 错误处理与降级策略
+    14.1 存储空间不足处理
+    14.2 文件读取失败处理
+    14.3 存储异常处理
+    14.4 文件操作异常处理
+    14.5 窗口异常处理
+    14.6 全局异常捕获
+15. 安全性考虑
+    15.1 XSS 防护
+    15.2 本地数据安全
+    15.3 文件内容安全处理
+    15.4 单实例控制安全
+    15.5 安全最佳实践
+16. Web 端与 PC 端差异对比
+    16.1 架构差异
+    16.2 存储差异
+    16.3 功能差异
+    16.4 部署差异
+
+================================================================================
+1. 项目概述
+================================================================================
+
+Nestxt 是一款简洁、高效的文本编辑器，采用跨平台前端核心架构，将应用从
+单一"项目"升级为"可迁移的平台"。Web 版使用 localStorage，PC 版使用
+pywebview，两端共用同一份前端代码，仅在启动时注入不同的存储引擎和系统能力
+引擎。
+
+主要功能特性：
+- 文件夹管理：支持无限层级嵌套的文件夹结构
+- 多标签编辑：无数量限制的标签页管理
+- 版本控制：每个文件支持最多 20 个历史版本快照
+- 语法高亮：自定义正则匹配规则，实时高亮显示
+- 智能编码识别：自动检测 UTF-8/GBK/GB2312/Big5 编码
+- 回收站：防止误删的安全缓冲区
+- 树图可视化：图形化展示文件夹结构
+- 自动保存：定时保存编辑内容，防止丢失
+- 跨平台架构：一次编写，双端运行（Web + PC）
+
+技术栈：
+- 前端：原生 JavaScript (ES6)、CSS3、HTML5（双端共享）
+- 后端（PC 端）：Python 3.x、pywebview、PyInstaller（打包）
+- 存储（Web 端）：浏览器 localStorage
+- 存储（PC 端）：本地 JSON 文件（%APPDATA%/Nestxt/UserData/data.json）
+- 架构：跨平台桥接层架构（Bridge Layer + 引擎注入）
+- 事件：Signal 事件总线 + MVC 分层模式
+
+================================================================================
+2. 双端统一架构设计
+================================================================================
+
+2.1 架构总览
+--------------------------------------------------------------------------------
+
+Nestxt 的跨平台架构通过桥接层（Bridge Layer）抽象平台差异，实现业务代码
+"一次编写，双端运行"。
+
+┌─────────────────────────────────────────────────────────────┐
+│                    业务层 (Business Layer)                   │
+│   Service 层：FolderService, FileService, TabService...    │
+│   Controller 层：EditorController, SidebarController...    │
+│   App 层：app.js, dialogs.js, settings.js...               │
+│   只调用 StorageService / SystemBridge，不关心底层实现       │
+├─────────────────────────────────────────────────────────────┤
+│                    桥接层 (Bridge Layer)                     │
+│   StorageBridge：数据持久化抽象（怎么存）                    │
+│   SystemBridge：系统能力抽象（怎么交互）                     │
+│   提供统一接口，自动检测环境选择引擎                         │
+├─────────────────────────────────────────────────────────────┤
+│                    引擎层 (Engine Layer)                     │
+│   Web 端：localStorage + File System Access API             │
+│   PC 端：pywebview.api（Python StorageEngine + 文件对话框） │
+│   启动时自动注入，业务层零改动                               │
+└─────────────────────────────────────────────────────────────┘
+
+设计核心思想：
+- 业务代码只认 Bridge 接口，不区分运行平台
+- 存储相关（setItem/getItem）→ StorageBridge.js，只负责读写数据
+- 系统能力相关（文件对话框、剪贴板）→ SystemBridge.js，只负责系统交互
+- 两个桥接层各司其职，业务层零改动
+
+2.2 三层架构详解
+--------------------------------------------------------------------------------
+
+第一层：业务层（Business Layer）
+- 包含所有 Service、Controller、App 模块
+- 只调用 StorageService 的业务语义方法（如 saveFiles/getFiles）
+- 只调用 SystemBridge 的系统能力方法（如 saveFile/importFile）
+- 永远不直接接触 StorageBridge、localStorage、pywebview.api
+
+第二层：桥接层（Bridge Layer）
+- StorageBridge：封装底层存储的原始读写接口（setItem/getItem/removeItem/clear）
+- SystemBridge：封装系统能力的调用接口（saveFile/importFile/clipboardCopy/clipboardPaste）
+- 自动检测运行环境，选择对应引擎
+- 提供统一的 Promise 异步接口
+
+第三层：引擎层（Engine Layer）
+- Web 端引擎：localStorage（存储）+ File System Access API / Clipboard API（系统能力）
+- PC 端引擎：pywebview.api → Python StorageEngine（存储）+ Python 文件对话框/剪贴板（系统能力）
+- 启动时自动注入，业务层无需感知
+
+2.3 引擎注入机制
+--------------------------------------------------------------------------------
+
+引擎注入在应用启动时自动完成，流程如下：
+
+1. app.js 启动 → 调用 StorageService.init()
+2. StorageService.init() → 调用 StorageBridge.init()
+3. StorageBridge.init() 检测环境：
+   - 若 window.pywebview.api 存在 → 注入 PC 端引擎（Python StorageEngine）
+   - 否则 → 注入 Web 端引擎（localStorage）
+4. app.js 启动 → 调用 SystemBridge.init()
+5. SystemBridge.init() 检测环境：
+   - 若 window.pywebview.api 存在 → 注入 PC 端引擎（Python 系统 API）
+   - 否则 → 注入 Web 端引擎（File System Access API + Clipboard API）
+
+注入代码示例：
+```javascript
+// StorageBridge.js - 自动检测环境
+init() {
+    if (typeof pywebview !== 'undefined' && pywebview.api) {
+        // PC 端：使用 Python 后端提供的存储 API
+        this._engine = {
+            setItem: async (key, value) => {
+                await pywebview.api.setItem(this._prefix + key, value);
+            },
+            getItem: async (key) => {
+                return await pywebview.api.getItem(this._prefix + key);
+            },
+            removeItem: async (key) => {
+                await pywebview.api.removeItem(this._prefix + key);
+            },
+            clear: async () => {
+                await pywebview.api.clear();
+            }
+        };
+    } else {
+        // Web 端：使用 localStorage
+        this._engine = {
+            setItem: async (key, value) => {
+                localStorage.setItem(this._prefix + key, value);
+            },
+            // ... getItem, removeItem, clear 类似
+        };
+    }
+}
+
+// SystemBridge.js - 自动检测环境
+init() {
+    if (typeof pywebview !== 'undefined' && pywebview.api) {
+        // PC 端：使用 Python 后端提供的系统 API
+        this._engine = {
+            saveFile: async (content, suggestedName) => {
+                return await pywebview.api.saveFile(content, suggestedName);
+            },
+            importFile: async () => {
+                return await pywebview.api.importFile();
+            },
+            clipboardCopy: async (text) => {
+                return await pywebview.api.clipboardCopy(text);
+            },
+            clipboardPaste: async () => {
+                return await pywebview.api.clipboardPaste();
+            }
+        };
+    } else {
+        // Web 端：使用浏览器原生 API
+        this._engine = {
+            saveFile: async (content, suggestedName) => {
+                // File System Access API，带降级方案
+            },
+            // ... importFile, clipboardCopy, clipboardPaste 类似
+        };
+    }
+}
+```
+
+2.4 双端开发环境测试
+--------------------------------------------------------------------------------
+
+Web 端（localhost:8000）：
+- 使用 Python 的 http.server 或 Flask 静态托管
+- StorageBridge 没有被注入 pywebview 引擎，走 localStorage
+- SystemBridge 走 File System Access API + Clipboard API
+- 像个普通网页一样运行
+
+PC 端（app.py）：
+- Python 启动 pywebview 窗口
+- app.py 将 Python 的 Api 对象通过 js_api 注入前端
+- StorageBridge 检测到 window.pywebview.api 存在，自动切到 Python 本地文件读写
+- SystemBridge 检测到 window.pywebview.api 存在，自动切到 Python 系统 API
+
+效果：实现真正"双端共用"开发，同一份前端代码在两个环境下正常运行。
+
+================================================================================
+3. 项目结构
+================================================================================
+
+3.1 完整目录结构
+--------------------------------------------------------------------------------
+
+Nestxt_PC/
+├── py/                              # Python 后端代码（仅 PC 端）
+│   ├── app.py                       # 应用主入口
+│   ├── config.py                    # 配置常量
+│   ├── requirements.txt             # Python 依赖
+│   ├── core/                        # 核心模块
+│   │   ├── __init__.py
+│   │   ├── api.py                  # API 接口类
+│   │   ├── storage.py              # 存储引擎
+│   │   ├── window.py               # 窗口管理
+│   │   └── singleton.py            # 单实例控制
+│   └── utils/                       # 工具模块
+│       ├── __init__.py
+│       ├── file_utils.py           # 文件操作工具
+│       ├── clipboard_utils.py      # 剪贴板工具
+│       └── resource_utils.py       # 资源路径工具
+├── Web/                             # 前端代码（双端共享）
+│   ├── index.html                  # 前端主页面
+│   ├── docs.html                   # 在线文档入口
+│   ├── css/                        # 样式文件
+│   │   ├── base.css                # CSS 变量 + 全局重置
+│   │   ├── fonts.css               # 字体声明
+│   │   ├── layout.css              # 标题栏 + 侧边栏 + 回收站
+│   │   ├── tree.css                # 文件树
+│   │   ├── tabs.css                # 标签页栏
+│   │   ├── editor.css              # 编辑器 + 工具栏
+│   │   ├── syntax-ui.css           # 语法高亮设置 UI
+│   │   ├── version.css             # 版本管理面板
+│   │   ├── search.css              # 搜索面板
+│   │   ├── dialogs.css             # 右键菜单 + 弹窗
+│   │   └── treeview.css            # 树图可视化
+│   ├── js/                         # JavaScript 代码
+│   │   ├── app.js                  # 应用入口
+│   │   ├── Bridge/                 # 桥接层（平台适配）
+│   │   │   ├── StorageBridge.js    # 存储桥接层
+│   │   │   └── SystemBridge.js     # 系统能力桥接层
+│   │   ├── core/                   # 核心层
+│   │   │   ├── Constants.js        # 全局常量
+│   │   │   ├── Signal.js           # 事件总线
+│   │   │   ├── Icons.js            # 图标常量管理
+│   │   │   └── Autoload.js         # 服务注册表
+│   │   ├── services/               # 服务层
+│   │   │   ├── StorageService.js   # 数据持久化（业务层）
+│   │   │   ├── FolderService.js    # 文件夹管理
+│   │   │   ├── FileService.js      # 文件 & 版本管理
+│   │   │   ├── TextFileReader.js   # 多格式文本读取 & 编码检测
+│   │   │   ├── TabService.js       # 标签页管理
+│   │   │   ├── TrashService.js     # 回收站管理
+│   │   │   ├── AutoSaveService.js  # 自动保存
+│   │   │   └── TimeService.js      # 时间服务
+│   │   ├── controllers/            # 控制器层
+│   │   │   ├── ThemeController.js          # 主题控制
+│   │   │   ├── SidebarController.js        # 侧边栏门面
+│   │   │   ├── TabController.js            # 标签栏渲染
+│   │   │   ├── EditorController.js         # 编辑器核心
+│   │   │   ├── EncodingController.js       # 编码控制
+│   │   │   ├── SearchController.js         # 搜索功能
+│   │   │   ├── DragController.js           # 拖拽功能
+│   │   │   ├── ContextMenuController.js    # 文件树右键菜单
+│   │   │   ├── editor/
+│   │   │   │   ├── EditorController.linenum.js      # 行号
+│   │   │   │   ├── EditorController.syntax.js       # 语法高亮
+│   │   │   │   ├── EditorController.treeview.js     # 树图可视化
+│   │   │   │   ├── EditorController.contextmenu.js  # 编辑器右键菜单
+│   │   │   │   └── EditorController.version.js      # 版本信息
+│   │   │   └── Sidebar/
+│   │   │       ├── FolderTreeStateManager.js   # 树状态管理
+│   │   │       ├── FolderTreeRenderer.js       # 树渲染器
+│   │   │       ├── FolderTreeEventHandler.js   # 树事件处理
+│   │   │       └── InlineRenameHelper.js       # 内联重命名
+│   │   └── app/                    # 应用子模块
+│   │       ├── dialogs.js          # 对话框
+│   │       ├── version-panel.js    # 版本面板
+│   │       ├── trash-panel.js      # 回收站面板
+│   │       ├── file-ops.js         # 文件操作
+│   │       └── settings.js         # 设置菜单
+│   ├── icon/                       # 图标资源
+│   ├── font/                       # 字体文件
+│   └── docs/                       # 在线文档
+├── data/                            # 本地数据目录（开发环境）
+│   ├── data.json                   # 用户数据
+│   └── data.json.bak               # 数据备份
+├── dist/                            # 打包输出目录
+│   └── Nestxt.exe                  # 可执行文件
+├── icon_Dark.ico                    # 应用图标
+├── build.spec                       # PyInstaller 配置
+└── Package.bat                      # 打包脚本
+
+3.2 前端模块说明
+--------------------------------------------------------------------------------
+
+前端代码在 Web 端和 PC 端完全共享，包括：
+- HTML 结构（index.html）
+- CSS 样式（css/ 目录）
+- JavaScript 逻辑（js/ 目录）
+- 图标资源（icon/ 目录）
+- 字体文件（font/ 目录）
+
+唯一的差异在于运行时行为：
+- Bridge/ 目录下的 StorageBridge.js 和 SystemBridge.js 根据环境自动选择引擎
+- 其他所有代码完全相同，无需任何修改
+
+3.3 Python 后端模块说明（仅 PC 端）
+--------------------------------------------------------------------------------
+
+Python 后端为 PC 端提供系统级能力：
+- app.py：创建桌面窗口，注入 Python API，启动事件循环
+- config.py：定义窗口、存储、文件对话框等配置常量
+- core/storage.py：本地文件存储引擎，对接 StorageBridge
+- core/api.py：提供前端可调用的 Python 方法（存储、文件、剪贴板等）
+- core/window.py：创建和管理 pywebview 窗口
+- core/singleton.py：使用 Windows 互斥体确保单实例运行
+- utils/file_utils.py：文件导入/导出功能
+- utils/clipboard_utils.py：剪贴板操作
+- utils/resource_utils.py：资源路径自适应（开发/打包模式）
+
+================================================================================
+4. 桥接层（Bridge Layer）
+================================================================================
+
+4.1 StorageBridge - 存储桥接层
+--------------------------------------------------------------------------------
+
+文件位置：js/Bridge/StorageBridge.js
+
+职责：提供底层存储的原始读写接口，不包含任何业务语义
+
+设计原则：
+- Web 端默认使用 localStorage 引擎
+- PC 端通过自动检测 pywebview 环境注入 Python 引擎
+- 所有 key 自动添加 nestxt_ 前缀
+- 所有 value 自动 JSON 序列化/反序列化
+- 所有方法返回 Promise（统一异步接口）
+
+接口定义：
+- init()：初始化，自动检测环境选择引擎
+- setEngine(engine)：手动注入存储引擎
+- setItem(key, value)：存储数据
+- getItem(key)：读取数据
+- removeItem(key)：删除数据
+- clear()：清空所有 nestxt_ 前缀的数据
+
+调用关系：
+- StorageBridge 只被 StorageService 调用
+- 其他所有模块（Service/Controller/App）永远不直接调用 StorageBridge
+
+4.2 SystemBridge - 系统能力桥接层
+--------------------------------------------------------------------------------
+
+文件位置：js/Bridge/SystemBridge.js
+
+职责：封装平台相关的系统能力（文件对话框、剪贴板等）
+
+设计原则：
+- Web 端使用 File System Access API + Clipboard API（带降级方案）
+- PC 端通过 pywebview 调用 Python 后端
+- 业务层只调用 SystemBridge 接口，不关心底层实现
+- 所有方法返回 Promise（统一异步接口）
+
+接口定义：
+- init()：初始化，自动检测环境选择引擎
+- setEngine(engine)：手动注入系统引擎
+- saveFile(content, suggestedName)：保存文件对话框
+- importFile()：打开文件对话框
+- clipboardCopy(text)：复制到剪贴板
+- clipboardPaste()：从剪贴板粘贴
+
+Web 端降级方案：
+- saveFile：不支持 File System Access API 时使用传统的 <a download> 下载
+- importFile：不支持时使用传统的 <input type="file"> 选择
+- clipboardCopy：不支持 Clipboard API 时使用 execCommand('copy')
+
+调用关系：
+- SystemBridge 被业务层直接调用（settings.js、file-ops.js、EditorController 子模块等）
+- 业务代码只调 SystemBridge.saveFile()，不关心底层是 Python 还是浏览器 API
+
+4.3 桥接层设计原则
+--------------------------------------------------------------------------------
+
+1. 分层收口
+   - 存储相关（setItem/getItem）→ StorageBridge.js
+   - 系统能力相关（文件对话框、剪贴板）→ SystemBridge.js
+   - 两个桥接层各司其职，职责清晰
+
+2. 底层隔离
+   - StorageBridge 只提供四个原始方法，只被 StorageService 调用
+   - 其他模块永远不碰 setItem/getItem，只碰 saveFiles/getFiles 这种业务语义
+
+3. 统一入口
+   - 所有存储调用全部走 StorageService
+   - 所有系统能力调用全部走 SystemBridge
+   - FileService / FolderService / TabService 不再直接碰 Bridge
+
+4. 引擎注入
+   - 启动时自动检测环境，决定用 localStorage / pywebview
+   - 只改 Bridge 层一处，业务层零改动
+
+5. 架构验证标准
+   - localStorage 直接调用 → 仅在 StorageBridge.js 内部
+   - pywebview.api 直接调用 → 仅在 StorageBridge.js 和 SystemBridge.js 内部
+   - navigator.clipboard 直接调用 → 仅在 SystemBridge.js 内部
+   - showSaveFilePicker/showOpenFilePicker 直接调用 → 仅在 SystemBridge.js 内部
+
+================================================================================
+5. 核心模块说明
+================================================================================
+
+5.1 核心层（Core）
+--------------------------------------------------------------------------------
+
+Signal.js - 事件总线
+- 实现发布-订阅模式
+- 提供 emit、on、off 方法
+- 所有模块间通信的核心枢纽
+
+Constants.js - 全局常量
+- 定义所有事件名称常量
+- 定义默认配置值
+- 定义支持的文件扩展名列表
+
+Icons.js - 图标常量管理
+- 统一管理所有 UI 图标的 HTML 字符串
+- 支持亮暗主题图标切换
+- 避免在代码中硬编码图标路径
+
+Autoload.js - 服务注册表
+- 统一管理所有服务的初始化和依赖注入
+- 提供全局服务访问点
+
+5.2 服务层（Services）
+--------------------------------------------------------------------------------
+
+StorageService.js - 数据持久化服务（业务层）
+- 基于 StorageBridge 实现业务语义
+- 管理 15 个数据键（folders、files、tabs、theme 等）
+- 立即写入（不使用防抖，确保数据可靠性）
+- 内存缓存 + 异步持久化
+- 提供业务语义方法（getFolders/saveFolders 等）
+
+FolderService.js - 文件夹管理服务
+- 文件夹 CRUD 操作
+- 支持无限层级嵌套
+- 维护文件夹树形结构
+- 触发文件夹相关事件
+
+FileService.js - 文件管理服务
+- 文件 CRUD 操作
+- 版本管理（保存、切换、删除、重命名）
+- 文件内容读写
+- 文件搜索（文件名 + 内容）
+- 复制副本功能
+
+TabService.js - 标签页管理服务
+- 标签页打开、关闭、切换
+- 标签页顺序管理
+- 维护当前激活标签状态
+
+TrashService.js - 回收站管理服务
+- 删除项目移入回收站
+- 恢复项目到原位置
+- 永久删除项目
+- 清空回收站
+
+TextFileReader.js - 多格式文本读取服务
+- 支持 14 种纯文本格式
+- 智能编码检测（BOM 检测 → UTF-8 验证 → GBK 回退）
+- 二进制文件检测与警告
+- 提供 forceRead 方法强制读取
+
+AutoSaveService.js - 自动保存服务
+- 定时保存编辑内容
+- 可配置保存间隔（30 秒/2 分钟/5 分钟/10 分钟）
+- 仅在有激活标签时执行保存
+
+TimeService.js - 定时器管理服务
+- 提供一次性定时器和重复定时器
+- 统一管理定时器生命周期
+- 触发 heartbeat、timer_completed、timer_tick 信号
+
+5.3 控制器层（Controllers）
+--------------------------------------------------------------------------------
+
+SidebarController.js - 侧边栏门面
+- 作为 Facade 模式，组装和协调子模块
+- 子模块包括：
+  * FolderTreeStateManager：树状态管理
+  * FolderTreeRenderer：树渲染器
+  * FolderTreeEventHandler：事件处理
+  * InlineRenameHelper：内联重命名
+- 提供统一的 API 对外接口
+
+EditorController.js - 编辑器核心控制器
+- 文本编辑、加载、保存
+- 行号显示与同步
+- 语法高亮覆盖层管理
+- 版本切换与预览
+- 树图可视化
+- 右键菜单
+- 子模块拆分：
+  * EditorController.linenum.js：行号逻辑
+  * EditorController.syntax.js：语法高亮
+  * EditorController.treeview.js：树图可视化
+  * EditorController.contextmenu.js：右键菜单
+  * EditorController.version.js：版本信息
+
+TabController.js - 标签栏控制器
+- 标签页渲染
+- 标签页切换、关闭交互
+- 标签页拖拽排序
+
+ThemeController.js - 主题控制器
+- 深色/浅色主题切换
+- 主题持久化记忆
+- 图标自动切换
+
+SearchController.js - 搜索控制器
+- 文件名搜索
+- 文件内容搜索
+- 防抖机制（300ms）
+- 搜索结果高亮显示
+
+DragController.js - 拖拽控制器
+- 文件在文件夹间拖拽移动
+- 外部文件拖入导入
+- 拖拽视觉效果
+
+ContextMenuController.js - 右键菜单控制器
+- 文件右键菜单
+- 文件夹右键菜单
+- 空白区域右键菜单
+
+EncodingController.js - 编码控制器
+- 编码显示与切换
+- 编码状态管理
+
+5.4 应用层（App）
+--------------------------------------------------------------------------------
+
+app.js - 应用入口
+- 初始化 Bridge 层（SystemBridge.init、StorageService.init）
+- 服务与控制器初始化
+- 快捷键绑定
+- 工具栏事件绑定
+- 状态栏更新
+- 侧边栏宽度调整
+
+app/dialogs.js - 对话框模块
+- 输入框对话框
+- 确认对话框
+- 消息提示框
+- HTML 转义工具
+
+app/version-panel.js - 版本面板模块
+- 版本列表渲染
+- 版本切换、保存、删除、重命名
+- 版本数量显示
+
+app/trash-panel.js - 回收站面板模块
+- 回收站列表渲染
+- 恢复、永久删除、清空操作
+
+app/file-ops.js - 文件操作模块
+- 新建文件/文件夹
+- 重命名、删除
+- 导入、导出（通过 SystemBridge）
+- 复制副本
+
+app/settings.js - 设置菜单模块
+- 数据导出/导入（通过 SystemBridge）
+- 自动保存设置
+- 语法高亮设置
+- 编码设置
+- 关于信息
+
+5.5 Python 后端层（仅 PC 端）
+--------------------------------------------------------------------------------
+
+app.py - 应用主入口
+- 职责：创建桌面窗口，注入 Python API，启动事件循环
+- 核心流程：
+  1. 单实例检查（防止多开）
+  2. 验证前端文件存在
+  3. 创建 API 实例
+  4. 创建窗口并注入 API
+  5. 启动 pywebview 事件循环
+  6. 清理资源（释放互斥体）
+
+config.py - 配置常量
+- 窗口配置：标题、尺寸、最小尺寸、背景色
+- 文件对话框：支持的文件类型
+- 存储配置：数据目录、文件名、备份后缀
+- 单实例控制：互斥体名称
+
+core/storage.py - 存储引擎
+- 提供本地文件存储，对接 StorageBridge 的 4 个 API
+- 线程安全（使用 threading.Lock）
+- 路径自适应（%APPDATA%/Nestxt/UserData/data.json）
+- 备份写入（先备份再覆盖，防止数据损坏）
+- 接口：set_item、get_item、remove_item、clear
+
+core/api.py - API 接口类
+- 提供前端可调用的 Python 方法
+- 接口分类：
+  * 存储 API：setItem、getItem、removeItem、clear
+  * 工具 API：ping、debugLog
+  * 文件操作 API：saveFile、importFile
+  * 窗口控制 API：closeWindow
+  * 剪贴板 API：clipboardCopy、clipboardPaste
+
+core/window.py - 窗口管理
+- 创建主窗口（设置标题、尺寸、图标等）
+- 注入 JS API（供前端调用）
+- 设置窗口图标（使用 Win32 API）
+- 监听窗口事件（loaded、closed）
+
+core/singleton.py - 单实例控制
+- 使用 Windows 互斥体 (Mutex) 确保只有一个实例运行
+- 创建命名互斥体 → 检查是否已存在 → 弹窗提示并退出
+
+utils/file_utils.py - 文件操作工具
+- save_file：弹出保存对话框，写入文件
+- import_file：弹出打开对话框，读取文件内容
+- 支持多编码检测（UTF-8、GBK、GB2312、Latin-1）
+
+utils/clipboard_utils.py - 剪贴板工具
+- clipboard_copy：复制文本到剪贴板
+- clipboard_paste：从剪贴板获取文本
+- 使用 Win32 API（win32clipboard）
+
+utils/resource_utils.py - 资源路径工具
+- 开发模式：相对于项目根目录
+- 打包模式：相对于 PyInstaller 的 _MEIPASS 临时目录
+- 自动适配两种模式
+
+================================================================================
+6. 关键技术实现
+================================================================================
+
+6.1 事件驱动架构
+--------------------------------------------------------------------------------
+
+Nestxt 采用基于 Signal 的事件驱动架构，实现模块间的松耦合通信。
+
+核心组件：Signal.js
+- 提供全局事件总线，所有模块通过 emit/on 进行通信
+- 支持事件监听、触发、移除
+- 事件常量统一定义在 Constants.js 中
+
+设计优势：
+- 模块间无直接依赖，便于维护和测试
+- 事件流向清晰，易于追踪数据变化
+- 支持一对多通知，一个操作可触发多个模块响应
+
+典型事件流：
+用户点击保存 → EditorController 触发 SAVE_REQUESTED →
+FileService 保存数据 → StorageService 持久化 →
+StorageBridge.setItem() → 引擎层写入 →
+app.js 更新状态栏显示
+
+6.2 MVC 分层模式
+--------------------------------------------------------------------------------
+
+项目采用经典的 MVC 分层架构，职责清晰：
+
+Model（数据层）- Services 目录
+- StorageService：数据持久化（通过 StorageBridge）
+- FolderService：文件夹 CRUD 操作
+- FileService：文件管理、版本控制
+- TabService：标签页状态管理
+- TrashService：回收站管理
+- AutoSaveService：自动保存定时任务
+
+View（视图层）- CSS 文件
+- base.css：CSS 变量、全局重置、主题定义
+- layout.css：标题栏、侧边栏、回收站布局
+- tree.css：文件树样式
+- editor.css：编辑器、工具栏样式
+- version.css：版本管理面板样式
+- dialogs.css：右键菜单、弹窗样式
+
+Controller（控制器层）- Controllers 目录
+- SidebarController：侧边栏门面（Facade）
+- EditorController：编辑器核心逻辑
+- TabController：标签栏渲染与交互
+- ThemeController：主题切换
+- SearchController：搜索功能
+- DragController：拖拽交互
+
+6.3 三层存储架构
+--------------------------------------------------------------------------------
+
+为解决存储逻辑与业务逻辑耦合问题，Nestxt 设计了三层存储架构：
+
+第一层：StorageBridge（技术层）
+- 职责：提供底层存储的原始读写接口
+- 特点：
+  * 自动检测环境，Web 端使用 localStorage，PC 端使用 pywebview API
+  * 所有 key 自动添加 nestxt_ 前缀
+  * 所有 value 自动 JSON 序列化/反序列化
+  * 所有方法返回 Promise（统一异步接口）
+- 接口：setItem、getItem、removeItem、clear
+
+第二层：StorageService（业务层）
+- 职责：基于 StorageBridge 实现业务语义的数据持久化
+- 特点：
+  * 管理 15 个数据键（folders、files、tabs、theme 等）
+  * 立即写入（不使用防抖，确保数据可靠性）
+  * 内存缓存 + 异步持久化
+  * 统一数据格式转换
+- 接口：load、save、remove + 业务语义方法
+
+第三层：业务服务层
+- FolderService、FileService 等直接调用 StorageService
+- 无需关心底层存储细节
+- 与 Web 端代码完全相同
+
+PC 端存储引擎：StorageEngine（Python 实现）
+- 存储位置：%APPDATA%/Nestxt/UserData/data.json
+- 存储格式：JSON（UTF-8 编码）
+- 线程安全：使用 threading.Lock 保护并发访问
+- 备份机制：每次写入前自动创建 .bak 备份
+
+Web 端存储引擎：localStorage
+- 存储位置：浏览器 localStorage
+- 存储容量：通常 5-10MB
+- 使用 nestxt_ 前缀区分应用数据
+
+设计优势：
+- 存储逻辑与业务逻辑解耦
+- 前端代码无需修改即可适配不同存储引擎
+- 便于单元测试（可 Mock StorageBridge）
+- 支持存储引擎热切换
+
+6.4 语法高亮实现
+--------------------------------------------------------------------------------
+
+实现原理：
+- 使用 textarea 作为输入层，文字颜色设为 transparent
+- 在 textarea 上方叠加 pre 元素作为语法高亮层
+- 通过正则匹配规则，将文本转换为带颜色的 HTML
+- 使用 CSS transform 同步滚动位置
+
+关键技术点：
+
+1. 覆盖层同步
+- 使用 transform: translate(-scrollLeft, -scrollTop) 实现像素级对齐
+- 避免使用 scrollTop 直接赋值（不同浏览器行为不一致）
+- overlay 的 overflow 设为 visible，由父容器统一裁剪
+
+2. 宽度一致性
+- textarea 和 overlay 都使用 box-sizing: border-box
+- 隐藏 textarea 滚动条，避免宽度差异导致换行不同
+
+3. 性能优化
+- 当高亮匹配总数超过 3000 个时，自动降级为纯文本显示
+- 使用 requestAnimationFrame 节流渲染
+- 仅在内容变化时更新高亮
+
+4. 自定义规则
+- 支持数字、自定义正则表达式匹配
+- 支持 HEX 色值自定义
+- 规则可添加、编辑、删除、恢复默认
+
+6.5 多格式文本读取与编码处理
+--------------------------------------------------------------------------------
+
+支持格式：
+.txt, .csv, .log, .ini, .json, .xml, .html, .css, .js, .py, .c, .cpp, .bat, .cmd
+
+编码检测流程：
+1. BOM 检测
+   - UTF-8 BOM：EF BB BF
+   - UTF-16 BOM：FE FF 或 FF FE
+2. UTF-8 字节验证
+   - 逐字节验证是否符合 UTF-8 编码规则
+   - 检查多字节序列的合法性
+3. GBK 回退
+   - UTF-8 验证失败时，自动尝试 GBK 解码
+
+二进制文件检测：
+- 统计非可打印字符占比
+- 超过 30% 则判定为二进制文件
+- 弹出警告提示，由用户决定是否继续
+
+实现细节：
+- 使用 FileReader 读取文件为 ArrayBuffer
+- 缓存原始字节，用于后续编码切换时重新解码
+- 提供 forceRead 方法，跳过二进制检测强制读取
+
+6.6 版本管理系统
+--------------------------------------------------------------------------------
+
+设计思路：
+- 每个文件维护一个 versions 数组
+- 每个版本包含：id、label（名称）、content（内容）、createdAt（时间戳）
+- 版本是不可变的快照，保存后不会被修改
+
+核心功能：
+
+1. 保存版本
+- 读取当前编辑器内容
+- 创建版本快照，存入 versions 数组
+- 最多保存 20 个版本，超出时删除最早的
+- 保存后留在默认版本继续编辑（不切换到新版本）
+
+2. 切换版本
+- 点击版本条目的勾选框切换
+- 切换前自动保存当前编辑内容
+- 支持跨文件切换，保持每个文件的版本编辑状态
+- 使用 _editingVersionMap 跟踪每个文件的当前编辑版本
+
+3. 版本预览
+- 查看版本内容但不进入编辑模式
+- 编辑内容保存到文件默认内容，不影响版本快照
+- 版本信息栏显示"预览中"提示
+
+4. 版本删除
+- 删除版本时检查是否为当前编辑版本
+- 如果是，清除 _currentEditingVersionId 状态
+- 使用自定义确认对话框，统一 UI 风格
+
+数据结构：
+{
+  id: "v_1234567890",
+  label: "初稿",
+  content: "文件内容文本",
+  createdAt: 1720000000000
+}
+
+6.7 行号与自动换行同步
+--------------------------------------------------------------------------------
+
+问题背景：
+- 行号按逻辑行（\n 分割）生成，每个逻辑行一个行号
+- 自动换行开启后，长文本会折行为多个视觉行
+- 导致行号与文本内容错位
+
+解决方案：
+
+1. 测量元素
+- 创建隐藏的 pre 元素作为测量工具
+- 字体、行高、宽度与 textarea 完全一致
+- 使用 white-space: pre-wrap 模拟自动换行
+
+2. 动态计算行高
+- 逐行将内容放入测量元素
+- 通过 scrollHeight 计算该逻辑行实际占用的视觉行数
+- 设置行号 div 高度为：视觉行数 × 行高
+
+3. 同步更新时机
+- 切换自动换行时重算
+- 字号变化时重算
+- 内容变化时重算
+
+4. 层叠顺序
+- textarea：z-index: auto（最底层）
+- syntax-overlay：z-index: 0（中间层）
+- line-numbers：z-index: 2（最顶层）
+- 确保行号始终覆盖在文本内容之上
+
+6.8 文件树交互优化
+--------------------------------------------------------------------------------
+
+模块化重构：
+将 SidebarController 拆分为四个子模块：
+- FolderTreeStateManager：管理选中状态、展开状态
+- FolderTreeRenderer：纯渲染函数，支持全量渲染和增量更新
+- FolderTreeEventHandler：事件委托，处理点击、双击、拖拽
+- InlineRenameHelper：内联重命名辅助
+
+关键优化：
+
+1. 双击重命名
+- 问题：单击触发展开/折叠导致 DOM 重建，双击事件目标丢失
+- 解决：使用 300ms 定时器延迟执行单击逻辑，双击时取消定时器
+- 添加 _isRenamingActive 标志，阻止重命名期间的事件穿透
+
+2. 点击响应速度
+- 问题：300ms 延迟导致用户感知卡顿
+- 解决：添加即时视觉反馈（立即高亮），延迟执行逻辑操作
+- 使用 requestAnimationFrame 节流渲染
+
+3. 拖拽区域扩大
+- 问题：拖拽目标仅为文件夹标题行，难以操作
+- 解决：添加 .tree-folder-group 容器包裹文件夹标题和子项
+- 拖拽事件绑定到容器，整个文件夹区域都可接收拖拽
+
+4. 拖拽性能优化
+- 问题：多次拖拽后性能下降甚至崩溃
+- 原因：每次 render 后重新绑定事件，事件监听器累积
+- 解决：使用事件委托，将事件绑定到容器而非逐个元素
+- 添加 _currentDragTarget 跟踪当前目标，避免重复操作
+
+5. 展开/折叠性能
+- 问题：每次展开/折叠触发全量 render，重建整个 DOM
+- 解决：使用增量更新，仅更新展开状态和高亮
+- 通过 FolderTreeStateManager 统一管理状态变化
+
+6.9 单实例控制（PC 端）
+--------------------------------------------------------------------------------
+
+实现原理：
+- 使用 Windows 互斥体 (Mutex) 确保只有一个实例运行
+- 互斥体是内核对象，系统级别唯一
+
+实现代码：
+```python
+def check_single_instance() -> bool:
+    mutex_name = "NestxtApp_Mutex_{F7B3C8D9-E4A5-4F2C-9B8A-7D6E5F4C3B2A}"
+    _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+    last_error = ctypes.windll.kernel32.GetLastError()
+    if last_error == 183:  # ERROR_ALREADY_EXISTS
+        _show_message("Nestxt", "Nestxt 已在运行，请勿重复启动。")
+        return False
+    return True
+```
+
+工作流程：
+1. 应用启动时创建命名互斥体
+2. 如果互斥体已存在（GetLastError == 183），说明已有实例运行
+3. 弹窗提示用户并退出当前进程
+4. 应用正常退出时释放互斥体（CloseHandle）
+
+6.10 本地文件存储（PC 端）
+--------------------------------------------------------------------------------
+
+存储位置：
+- 路径：%APPDATA%/Nestxt/UserData/data.json
+- 示例：C:\Users\YFan-01\AppData\Roaming\Nestxt\UserData\data.json
+
+存储格式：
+```json
+{
+  "nestxt_folders": [...],
+  "nestxt_files": [...],
+  "nestxt_tabs": [...],
+  "nestxt_theme": "dark",
+  "nestxt_fontsize": 16,
+  ...
+}
+```
+
+线程安全：
+```python
+class StorageEngine:
+    def __init__(self):
+        self._lock = threading.Lock()
+
+    def set_item(self, key: str, value: str) -> dict:
+        with self._lock:
+            data = self._read_data()
+            data[key] = value
+            return self._write_data(data)
+```
+
+备份机制：
+```python
+def _write_data(self, data: dict) -> bool:
+    # 1. 备份现有文件
+    if self._data_path.exists():
+        backup_path = self._data_path.with_suffix('.json.bak')
+        with open(self._data_path, 'r', encoding='utf-8') as src:
+            content = src.read()
+        with open(backup_path, 'w', encoding='utf-8') as dst:
+            dst.write(content)
+    # 2. 写入新数据
+    with open(self._data_path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+```
+
+6.11 pywebview 桥接机制（PC 端）
+--------------------------------------------------------------------------------
+
+pywebview 提供了 JavaScript 与 Python 之间的双向通信机制。
+
+JavaScript 调用 Python：
+- 前端通过 window.pywebview.api 访问 Python API 对象
+- 所有 API 方法调用返回 Promise（异步）
+- 参数自动序列化/反序列化（JSON）
+- 示例：await window.pywebview.api.setItem('key', 'value')
+
+Python 调用 JavaScript：
+- 后端通过 window.evaluate_js() 执行 JavaScript 代码
+- 可获取返回值（自动转换类型）
+- 示例：window.evaluate_js('StorageService.saveAll()')
+
+通信流程：
+1. 前端调用 API：window.pywebview.api.setItem(key, value)
+2. pywebview 序列化参数，通过 IPC 传递给 Python
+3. Python 执行对应方法，返回结果
+4. pywebview 序列化结果，通过 IPC 返回给前端
+5. 前端 Promise resolve，获取结果
+
+注意事项：
+- 所有 API 调用都是异步的，必须使用 await 或 .then()
+- 参数和返回值必须是可序列化的（避免传递函数、DOM 对象等）
+- 频繁调用会影响性能，建议批量操作
+
+6.12 资源路径自适应（PC 端）
+--------------------------------------------------------------------------------
+
+问题背景：
+- 开发模式：资源文件相对于项目根目录
+- 打包模式：资源文件被解压到 PyInstaller 的 _MEIPASS 临时目录
+
+解决方案：
+```python
+def resolve_resource_path(relative_path: str) -> str:
+    if getattr(sys, 'frozen', False):
+        # 打包模式：使用 _MEIPASS 临时目录
+        base_path = Path(sys._MEIPASS)
+    else:
+        # 开发模式：相对于项目根目录
+        base_path = Path(__file__).parent.parent.parent
+    return str(base_path / relative_path)
+```
+
+工作原理：
+- sys.frozen：PyInstaller 打包后会设置此属性
+- sys._MEIPASS：PyInstaller 解压资源的临时目录
+- 开发模式下，__file__ 是 resource_utils.py 的路径，向上三级是项目根目录
+
+================================================================================
+7. 开发过程中的关键问题与解决方案
+================================================================================
+
+7.1 语法高亮层与输入层同步问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 语法高亮开启后，覆盖层与 textarea 滚动位置不同步
+- 文本输入区域过窄时，高亮层内容可选中但不可见
+- 两者宽度不一致，导致换行位置不同
+
+根因分析：
+1. textarea 有可见滚动条（占约 17px），overlay 滚动条被隐藏
+2. 宽度不同导致 scrollHeight 不同，相同的 scrollTop 值对应不同视觉位置
+3. overlay 同时使用 overflow: auto 和 transform: translateY()
+
+解决方案：
+1. 两者都使用 box-sizing: border-box，统一盒模型
+2. 隐藏 textarea 滚动条，确保宽度一致
+3. 使用 transform: translate(-scrollLeft, -scrollTop) 同步滚动
+4. overlay 的 overflow 改为 visible，由父容器统一裁剪
+5. 移除分散的 scrollTop 同步代码，统一使用 _syncOverlayScroll 方法
+
+7.2 版本管理数据覆盖问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 保存新版本时，之前保存的版本内容被覆盖
+- 切换版本后编辑内容丢失
+- 跨文件切换时版本编辑状态丢失
+
+根因分析：
+1. confirmVersionSave 中先调用 EditorController.save()，会覆盖当前激活的版本
+2. 切换版本时没有先保存当前编辑内容
+3. _currentEditingVersionId 是全局属性，跨文件切换时被硬重置
+
+解决方案：
+1. 保存版本时直接读取 textarea 内容，不调用 save()
+2. 切换版本前先调用 save() 保存当前编辑内容
+3. 添加 _editingVersionMap，按文件 ID 跟踪每个文件的版本编辑状态
+4. 保存版本后留在默认版本，不切换到新版本（版本是不可变快照）
+
+7.3 双击重命名失效问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 双击文件夹名称时，无法正常进入重命名状态
+- 第一次 click 触发展开/折叠，导致 DOM 重建，双击事件目标丢失
+
+解决方案：
+- 单击文件夹时使用 300ms 定时器延迟执行
+- 双击时取消待执行的单击定时器
+- 添加 _isRenamingActive 标志，阻止重命名期间的事件穿透
+- 使用 focusout 事件替代 blur，避免点击外部时冲突
+
+7.4 拖拽性能问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 多次执行拖入操作后，视口性能很差，甚至直接崩溃
+- 拖拽虚线显示区域仅为文件夹标题，不包含子项
+
+根因分析：
+1. _bindDragEvents() 每次 render 后调用，事件监听器累积
+2. 10 次 render 后有 10 个重复的 dragover 监听器，指数级性能下降
+3. 拖拽目标区域仅为 .tree-folder 标题行
+
+解决方案：
+1. 使用事件委托，将事件绑定到容器而非逐个元素
+2. 在 bindEvents 时只绑定一次，不随 render 重复绑定
+3. 添加 .tree-folder-group 容器包裹文件夹标题和子项
+4. 添加 _currentDragTarget 跟踪当前目标，避免重复操作和闪烁
+5. 使用 e.stopPropagation() 阻止冒泡，确保只高亮最深层的文件夹组
+
+7.5 点击响应延迟问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 鼠标单击 txt 文件，选中会有明显延迟
+- 多次点击不同 txt，甚至出现多选现象
+
+解决方案：
+1. 添加即时视觉反馈：点击时立即高亮选中项
+2. 延迟执行逻辑操作（展开/折叠、打开文件）
+3. 统一状态管理：_selectedFolderId 只由 setSelectedFolder 修改
+4. _updateHighlight 中只做 DOM 高亮操作，不修改状态
+5. 调整事件检测顺序，文件优先于文件夹组
+
+7.6 数据持久化可靠性问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- Web 端使用 localStorage，浏览器清理缓存时可能丢失数据
+- localStorage 容量限制（通常 5-10MB）
+- 跨设备数据无法同步
+
+解决方案：
+1. PC 端使用本地文件存储（%APPDATA%/Nestxt/UserData/data.json）
+2. 通过 StorageBridge.setEngine() 注入 Python StorageEngine
+3. 前端代码无需修改，自动适配新的存储引擎
+4. 数据保存在系统 AppData 目录，不会被浏览器清理
+
+7.7 窗口关闭时数据丢失问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- 窗口关闭时触发 beforeunload 事件
+- beforeunload 中执行异步保存操作
+- 窗口关闭导致 IPC 连接断开，保存失败
+
+根因分析：
+1. beforeunload 事件是同步的，无法等待异步操作完成
+2. 窗口关闭时 pywebview 立即销毁，IPC 连接断开
+3. Python 端的保存操作尚未完成，窗口已经关闭
+
+解决方案：
+1. 移除 beforeunload 事件中的异步保存操作
+2. StorageService 改为立即写入（不使用防抖）
+3. 每次数据变化时立即调用 StorageBridge.setItem()
+4. 不依赖窗口关闭事件进行数据持久化
+
+7.8 多实例运行冲突问题（PC 端）
+--------------------------------------------------------------------------------
+
+问题描述：
+- 多个实例同时运行会导致数据冲突
+- 多个进程同时写入 data.json 导致数据损坏
+
+解决方案：
+1. 使用 Windows 互斥体 (Mutex) 实现单实例控制
+2. 应用启动时检查是否已有实例运行
+3. 如已有实例，弹窗提示并退出
+4. StorageEngine 使用 threading.Lock 保护并发访问
+
+7.9 打包后资源文件路径问题（PC 端）
+--------------------------------------------------------------------------------
+
+问题描述：
+- 开发模式下，资源文件相对于项目根目录
+- 打包后，资源文件被解压到 PyInstaller 的 _MEIPASS 临时目录
+- 路径解析失败导致找不到资源文件
+
+解决方案：
+```python
+def resolve_resource_path(relative_path: str) -> str:
+    if getattr(sys, 'frozen', False):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent.parent.parent
+    return str(base_path / relative_path)
+```
+
+7.10 存储引擎异步调用问题
+--------------------------------------------------------------------------------
+
+问题描述：
+- StorageBridge 的方法返回 Promise
+- 同步调用会导致数据未保存就继续执行
+
+解决方案：
+```javascript
+// 正确方式：使用 await
+async function saveData() {
+    await StorageBridge.setItem('key', 'value');
+    console.log('数据已保存');
+}
+
+// 错误方式：同步调用
+function saveData() {
+    StorageBridge.setItem('key', 'value');  // 返回 Promise，不是实际结果
+}
+```
+
+================================================================================
+8. 性能优化
+================================================================================
+
+8.1 渲染优化
+--------------------------------------------------------------------------------
+
+1. 增量更新
+- FolderTreeRenderer 支持全量渲染和增量更新
+- 展开/折叠、高亮操作仅更新相关 DOM，不重建整个树
+
+2. 渲染节流
+- 使用 requestAnimationFrame 节流渲染
+- 避免短时间内多次 render 导致性能下降
+
+3. 事件委托
+- 将事件绑定到容器而非逐个元素
+- 避免事件监听器累积
+
+8.2 存储优化
+--------------------------------------------------------------------------------
+
+1. 立即写入
+- StorageService 不使用防抖，数据变更时立即写入
+- 避免关闭时丢失数据
+
+2. 内存缓存
+- StorageService 维护内存缓存，读取时直接返回缓存数据
+- 减少 StorageBridge 调用次数
+
+3. 批量操作
+- 避免频繁调用 StorageBridge.setItem()
+- 建议：批量修改后一次性保存
+
+8.3 语法高亮优化
+--------------------------------------------------------------------------------
+
+1. 自动降级
+- 当高亮匹配总数超过 3000 个时，自动降级为纯文本显示
+- 避免浏览器 DOM 渲染失败
+
+2. 按需更新
+- 仅在内容变化时更新高亮
+- 使用 requestAnimationFrame 节流更新
+
+8.4 拖拽优化
+--------------------------------------------------------------------------------
+
+1. 事件委托
+- 将拖拽事件绑定到容器
+- 避免重复绑定和监听器累积
+
+2. 目标跟踪
+- 使用 _currentDragTarget 跟踪当前拖拽目标
+- 避免重复操作和闪烁
+
+3. 阻止冒泡
+- 使用 e.stopPropagation() 阻止事件冒泡
+- 确保只高亮最深层的文件夹组
+
+8.5 启动性能优化
+--------------------------------------------------------------------------------
+
+1. 延迟加载
+- 非关键资源延迟加载（如在线文档）
+- 优先加载核心功能
+
+2. 移除 pywebview 轮询
+- 使用 pywebviewready 事件替代轮询检测
+- 减少启动延迟
+
+3. 优化 escapeHtml
+- 使用高效的字符串替换算法
+- 加速语法高亮初始化
+
+8.6 内存管理
+--------------------------------------------------------------------------------
+
+1. 事件监听器清理
+- 窗口关闭时清理所有事件监听器
+- 避免内存泄漏
+
+2. 大对象释放
+- 及时释放大文件内容
+- 使用 WeakMap 缓存临时对象
+
+3. 垃圾回收
+- 避免循环引用
+- 及时清理不再使用的对象
+
+================================================================================
+9. 核心数据结构定义
+================================================================================
+
+9.1 文件夹接口
+--------------------------------------------------------------------------------
+
+interface Folder {
+    id: number;              // 文件夹唯一ID（自增）
+    name: string;            // 文件夹名称
+    parentId: number | null; // 父文件夹ID（null 表示根目录）
+    expanded: boolean;       // 是否展开
+}
+
+9.2 文件接口
+--------------------------------------------------------------------------------
+
+interface File {
+    id: number;              // 文件唯一ID（自增）
+    name: string;            // 文件名（含扩展名，如 "笔记.txt"）
+    folderId: number | null; // 所属文件夹ID（null 表示根目录）
+    content: string;         // 文件内容
+    encoding: string;        // 文件编码（如 "UTF-8", "GBK"）
+    createdAt: string;       // 创建时间（ISO 8601 格式）
+    updatedAt: string;       // 最后更新时间（ISO 8601 格式）
+    versions?: Version[];    // 版本快照数组（可选）
+}
+
+9.3 版本接口
+--------------------------------------------------------------------------------
+
+interface Version {
+    id: number;              // 版本唯一ID（时间戳）
+    content: string;         // 版本内容
+    label: string;           // 版本标签（如 "初稿", "版本 1"）
+    createdAt: string;       // 创建时间（ISO 8601 格式）
+}
+
+9.4 回收站项目接口
+--------------------------------------------------------------------------------
+
+interface TrashItem {
+    id: number;              // 回收站项目唯一ID
+    type: 'file' | 'folder'; // 项目类型
+    name: string;            // 原名称
+    parentId: number | null; // 原父级ID
+    content: string | null;  // 文件内容（文件夹为 null）
+    deletedAt: string;       // 删除时间（ISO 8601 格式）
+    _files?: Array<{         // 文件夹内的文件（仅 type='folder' 时存在）
+        name: string;
+        parentId: number | null;
+        content: string;
+    }>;
+}
+
+9.5 语法规则接口
+--------------------------------------------------------------------------------
+
+interface SyntaxRule {
+    name: string;              // 规则名称（如 "数字", "字符串"）
+    type: 'number' | 'custom'; // 规则类型
+    color: string;             // 高亮颜色（HEX 格式，如 "#FF0000"）
+    pattern?: string;          // 正则表达式（仅当 type 为 'custom' 时使用）
+}
+
+说明：
+- type 为 'number' 时，自动匹配所有数字
+- type 为 'custom' 时，使用 pattern 字段定义的正则表达式进行匹配
+- 最多支持 50 个语法规则
+- 规则按数组顺序应用，后应用的规则会覆盖先应用的规则
+
+9.6 存储键常量
+--------------------------------------------------------------------------------
+
+const STORAGE_KEYS = {
+    FOLDERS: 'nestxt_folders',           // 文件夹列表
+    FILES: 'nestxt_files',               // 文件列表
+    TABS: 'nestxt_tabs',                 // 标签页ID数组
+    TRASH: 'nestxt_trash',               // 回收站列表
+    THEME: 'nestxt_theme',               // 主题设置
+    FONTSIZE: 'nestxt_fontsize',         // 字号设置
+    LINENUM: 'nestxt_linenum',           // 行号显示状态
+    SIDEBAR_WIDTH: 'nestxt_sidebar_width' // 侧边栏宽度
+};
+
+// StorageService 管理的 15 个数据键
+const DATA_KEYS = [
+    'folders', 'files', 'tabs', 'activeTab', 'trash',
+    'theme', 'fontsize', 'linenum', 'sidebar_width',
+    'wordwrap', 'version_panel_width', 'autosave_interval',
+    'syntax', 'syntax_highlight', 'editing_versions'
+];
+
+================================================================================
+10. 服务层公开 API 方法签名
+================================================================================
+
+10.1 StorageBridge（存储桥接层）
+--------------------------------------------------------------------------------
+
+StorageBridge = {
+    init(): void;
+    setEngine(engine: {
+        setItem: (key: string, value: string) => Promise<void>;
+        getItem: (key: string) => Promise<string | null>;
+        removeItem: (key: string) => Promise<void>;
+        clear: () => Promise<void>;
+    }): void;
+    setItem(key: string, value: any): Promise<void>;
+    getItem(key: string): Promise<any>;
+    removeItem(key: string): Promise<void>;
+    clear(): Promise<void>;
+}
+
+关于 async 包装的说明：
+StorageBridge 的所有方法都使用 async/await 包装返回 Promise，原因如下：
+
+1. PC 桌面版需要真正的异步：PC 端通过 pywebview 的 js_api 桥接调用 Python 存储
+   引擎（StorageEngine），js_api 的方法调用是真正的异步操作（JS ↔ Python 跨进程
+   通信）。此时 StorageBridge 的 async 不是模拟的，而是必须的。
+
+2. 接口一致性：setEngine() 允许注入自定义存储引擎。浏览器版注入 localStorage
+   引擎（同步），PC 版注入 pywebview API 引擎（异步）。统一的 Promise 接口保证了
+   两种引擎的兼容性，上层代码无需区分底层实现。
+
+3. 浏览器版行为：localStorage 的读写操作在 Promise 内部立即完成并 resolve，没有
+   真正的异步等待。调用方可以使用 await 或直接忽略返回值，两种方式都能正常工作。
+
+4. 上层调用：StorageService 及更上层的服务调用 Promise 方法时，浏览器版实际不产生
+   异步延迟，PC 版则等待 pywebview API 返回结果。上层代码对两种情况透明兼容。
+
+10.2 SystemBridge（系统能力桥接层）
+--------------------------------------------------------------------------------
+
+SystemBridge = {
+    init(): void;
+    setEngine(engine: {
+        saveFile: (content: string, suggestedName: string) => Promise<Object>;
+        importFile: () => Promise<Object>;
+        clipboardCopy: (text: string) => Promise<Object>;
+        clipboardPaste: () => Promise<Object>;
+    }): void;
+    saveFile(content: string, suggestedName: string): Promise<Object>;
+    importFile(): Promise<Object>;
+    clipboardCopy(text: string): Promise<Object>;
+    clipboardPaste(): Promise<Object>;
+}
+
+返回值说明：
+- saveFile: { success: boolean, path?: string, error?: string }
+- importFile: { success: boolean, name?: string, content?: string, error?: string }
+- clipboardCopy: { success: boolean, error?: string }
+- clipboardPaste: { success: boolean, text?: string, error?: string }
+
+10.3 StorageService（数据持久化服务）
+--------------------------------------------------------------------------------
+
+StorageService = {
+    // 初始化
+    init(): Promise<void>;
+    waitReady(): Promise<void>;
+
+    // 通用方法
+    load(key: string, defaultValue?: any): any;
+    save(key: string, data: any): void;
+    remove(key: string): void;
+
+    // 业务语义方法（读）
+    getFolders(): Folder[];
+    getFiles(): File[];
+    getTabs(): number[];
+    getActiveTab(): number | null;
+    getTrash(): TrashItem[];
+    getTheme(): string;
+    getFontsize(): number;
+    getLinenum(): boolean;
+    getSidebarWidth(): number;
+    getWordwrap(): boolean;
+    getVersionPanelWidth(): number;
+    getAutosaveInterval(): number;
+    getSyntax(): SyntaxRule[];
+    getSyntaxHighlight(): boolean;
+    getEditingVersions(): Record<number, number | null>;
+
+    // 业务语义方法（写）
+    saveFolders(data: Folder[]): void;
+    saveFiles(data: File[]): void;
+    saveTabs(data: number[]): void;
+    saveActiveTab(data: number | null): void;
+    saveTrash(data: TrashItem[]): void;
+    saveTheme(data: string): void;
+    saveFontsize(data: number): void;
+    saveLinenum(data: boolean): void;
+    saveSidebarWidth(data: number): void;
+    saveWordwrap(data: boolean): void;
+    saveVersionPanelWidth(data: number): void;
+    saveAutosaveInterval(data: number): void;
+    saveSyntax(data: SyntaxRule[]): void;
+    saveSyntaxHighlight(data: boolean): void;
+    saveEditingVersions(data: Record<number, number | null>): void;
+
+    // 批量操作
+    exportAll(): Record<string, any>;
+    importAll(data: Record<string, any>): void;
+}
+
+10.4 FolderService（文件夹管理服务）
+--------------------------------------------------------------------------------
+
+FolderService = {
+    init(): void;
+    getAll(): Folder[];
+    getById(id: number): Folder | undefined;
+    getChildren(parentId: number | null): Folder[];
+    create(name: string, parentId?: number | null): Folder;
+    rename(id: number, newName: string): boolean;
+    remove(id: number): number[];  // 返回被删除的所有文件夹ID列表
+    toggleExpand(id: number): void;
+    expand(id: number): void;
+    exists(id: number): boolean;
+    countFiles(folderId: number, files: File[]): number;
+    getDepth(id: number): number;
+    move(folderId: number, targetFolderId: number | null): boolean;
+}
+
+10.5 FileService（文件管理服务）
+--------------------------------------------------------------------------------
+
+FileService = {
+    init(): void;
+    getAll(): File[];
+    getById(id: number): File | undefined;
+    getByFolder(folderId: number | null): File[];
+    create(name: string, folderId?: number | null, content?: string, encoding?: string): File;
+    rename(id: number, newName: string): boolean;
+    remove(id: number): File | null;
+    removeByFolder(folderId: number): File[];
+    saveContent(id: number, content: string): boolean;
+    move(fileId: number, targetFolderId: number | null): boolean;
+    search(query: string): Array<File & { matchType: 'name' | 'content' }>;
+    exists(name: string, folderId: number | null, excludeId?: number): boolean;
+
+    // 版本管理
+    saveVersion(fileId: number, label?: string, content?: string): Version | null;
+    getVersions(fileId: number): Version[];
+    updateVersionContent(fileId: number, versionId: number, content: string): boolean;
+    deleteVersion(fileId: number, versionId: number): boolean;
+    renameVersion(fileId: number, versionId: number, newLabel: string): boolean;
+    restoreVersion(fileId: number, versionId: number): boolean;
+}
+
+10.6 TabService（标签页管理服务）
+--------------------------------------------------------------------------------
+
+TabService = {
+    init(): void;
+    getAll(): number[];
+    getActiveId(): number | null;
+    getCount(): number;
+    isFull(): boolean;
+    isOpen(fileId: number): boolean;
+    open(fileId: number): boolean;
+    close(fileId: number): boolean;
+    switchTo(fileId: number): void;
+    closeAll(): void;
+    reorder(fromFileId: number, toFileId: number): void;
+}
+
+10.7 TrashService（回收站管理服务）
+--------------------------------------------------------------------------------
+
+TrashService = {
+    init(): void;
+    getAll(): TrashItem[];
+    addFile(file: File): void;
+    addFolder(folder: Folder, files: File[]): void;
+    restore(trashId: number): boolean;
+    delete(trashId: number): void;
+    empty(): void;
+    getCount(): number;
+}
+
+10.8 AutoSaveService（自动保存服务）
+--------------------------------------------------------------------------------
+
+AutoSaveService = {
+    start(): void;
+    stop(): void;
+    isEnabled(): boolean;
+}
+
+================================================================================
+11. 完整事件列表与流向说明
+================================================================================
+
+11.1 事件分类列表
+--------------------------------------------------------------------------------
+
+【文件事件】
+FILE_CREATED: 'file:created'           - 文件创建后触发
+FILE_DELETED: 'file:deleted'           - 文件删除后触发
+FILE_RENAMED: 'file:renamed'           - 文件重命名后触发
+FILE_SAVED: 'file:saved'               - 文件内容保存后触发
+FILE_OPENED: 'file:opened'             - 文件打开时触发
+FILE_MOVED: 'file:moved'               - 文件移动后触发
+FILE_CONTENT_CHANGED: 'file:contentChanged' - 文件内容变化时触发
+
+【文件夹事件】
+FOLDER_CREATED: 'folder:created'       - 文件夹创建后触发
+FOLDER_DELETED: 'folder:deleted'       - 文件夹删除后触发
+FOLDER_RENAMED: 'folder:renamed'       - 文件夹重命名后触发
+FOLDER_EXPANDED: 'folder:expanded'     - 文件夹展开时触发
+FOLDER_COLLAPSED: 'folder:collapsed'   - 文件夹折叠时触发
+FOLDER_SELECTED: 'folder:selected'     - 文件夹选中时触发
+FOLDER_MOVED: 'folder:moved'           - 文件夹移动后触发
+
+【标签页事件】
+TAB_OPENED: 'tab:opened'               - 标签页打开后触发
+TAB_CLOSED: 'tab:closed'               - 标签页关闭后触发
+TAB_SWITCHED: 'tab:switched'           - 标签页切换后触发
+TAB_CLOSE_ALL: 'tab:closeAll'          - 关闭所有标签页时触发
+TAB_REORDERED: 'tab:reordered'         - 标签页重新排序后触发
+
+【编辑器事件】
+EDITOR_SAVE: 'editor:save'             - 编辑器保存请求
+EDITOR_AUTO_SAVE: 'editor:autoSave'    - 自动保存触发
+EDITOR_UPDATE: 'editor:update'         - 编辑器内容更新
+
+【主题事件】
+THEME_CHANGED: 'theme:changed'         - 主题切换后触发
+
+【视图事件】
+SIDEBAR_TOGGLE: 'sidebar:toggle'       - 侧边栏显示/隐藏
+SIDEBAR_RESIZE: 'sidebar:resize'       - 侧边栏宽度调整
+LINE_NUM_TOGGLE: 'lineNum:toggle'      - 行号显示切换
+WORD_WRAP_TOGGLE: 'wordWrap:toggle'    - 自动换行切换
+SYNTAX_HIGHLIGHT_TOGGLE: 'syntaxHighlight:toggle' - 语法高亮切换
+TREE_VIEW_TOGGLE: 'treeView:toggle'    - 树图可视化切换
+FONT_SIZE_CHANGED: 'fontSize:changed'  - 字号变化
+
+【回收站事件】
+TRASH_OPENED: 'trash:opened'           - 回收站面板打开
+ITEM_RESTORED: 'trash:itemRestored'    - 项目从回收站恢复
+TRASH_EMPTIED: 'trash:emptied'         - 回收站清空
+
+【搜索事件】
+SEARCH_OPENED: 'search:opened'         - 搜索面板打开
+SEARCH_CLOSED: 'search:closed'         - 搜索面板关闭
+SEARCH_RESULTS: 'search:results'       - 搜索结果更新
+
+【拖拽事件】
+DRAG_START: 'drag:start'               - 拖拽开始
+DRAG_OVER: 'drag:over'                 - 拖拽经过目标
+DRAG_DROP: 'drag:drop'                 - 拖拽释放
+DRAG_END: 'drag:end'                   - 拖拽结束
+
+【版本管理事件】
+VERSION_SAVED: 'version:saved'         - 版本保存后触发
+VERSION_DELETED: 'version:deleted'     - 版本删除后触发
+VERSION_RESTORED: 'version:restored'   - 版本恢复后触发
+VERSION_PANEL_TOGGLE: 'version:panelToggle' - 版本面板显示/隐藏
+
+【编码事件】
+ENCODING_CHANGED: 'encoding:changed'   - 文件编码切换后触发
+
+【存储事件】（StorageService 内部使用）
+storage:folders-updated                - 文件夹数据更新
+storage:files-updated                  - 文件数据更新
+storage:tabs-updated                   - 标签页数据更新
+storage:active-tab-updated             - 激活标签更新
+storage:trash-updated                  - 回收站数据更新
+storage:theme-updated                  - 主题设置更新
+storage:fontsize-updated               - 字号设置更新
+storage:linenum-updated                - 行号设置更新
+storage:sidebar-width-updated          - 侧边栏宽度更新
+storage:wordwrap-updated               - 自动换行设置更新
+storage:version-panel-width-updated    - 版本面板宽度更新
+storage:autosave-interval-updated      - 自动保存间隔更新
+storage:syntax-updated                 - 语法规则更新
+storage:syntax-highlight-updated       - 语法高亮开关更新
+storage:editing-versions-updated       - 编辑版本映射更新
+storage:import-all                     - 批量导入完成
+
+11.2 典型事件流向图
+--------------------------------------------------------------------------------
+
+【保存文件流程】
+用户点击保存 → EditorController.save()
+    → FileService.saveContent(fileId, content)
+        → StorageService.saveFiles(files)
+            → StorageBridge.setItem('files', data)
+                → [Web 端] localStorage.setItem('nestxt_files', data)
+                → [PC 端] pywebview.api.setItem('nestxt_files', data)
+                    → Python StorageEngine.set_item()
+                        → 写入 data.json
+        → signal.emit(FILE_SAVED, file)
+            → app.js 更新状态栏显示
+            → TabController 更新标签页标题
+
+【创建文件夹流程】
+用户点击新建文件夹 → app.js
+    → FolderService.create(name, parentId)
+        → StorageService.saveFolders(folders)
+            → StorageBridge.setItem('folders', data)
+        → signal.emit(FOLDER_CREATED, folder)
+            → SidebarController.render() 刷新侧边栏
+
+【打开文件流程】
+用户点击文件 → app.js
+    → TabService.open(fileId)
+        → StorageService.saveTabs(tabs)
+        → signal.emit(TAB_OPENED, { fileId })
+            → TabController.render() 渲染标签栏
+        → signal.emit(TAB_SWITCHED, { fileId })
+            → EditorController.loadFile(fileId)
+                → 加载文件内容到编辑器
+                → 更新行号、语法高亮
+
+【版本保存流程】
+用户点击保存版本 → app.js
+    → FileService.saveVersion(fileId, label, content)
+        → StorageService.saveFiles(files)
+        → signal.emit(VERSION_SAVED, { fileId, version })
+            → version-panel.js 刷新版本列表
+
+【拖拽移动流程】
+用户拖拽文件到文件夹 → DragController
+    → signal.emit(DRAG_DROP, { fileId, targetFolderId })
+    → FileService.move(fileId, targetFolderId)
+        → StorageService.saveFiles(files)
+        → signal.emit(FILE_MOVED, { file, targetFolderId })
+            → SidebarController.render() 刷新侧边栏
+
+11.3 PC 端特有事件流向
+--------------------------------------------------------------------------------
+
+【数据保存流程（PC 端）】
+用户编辑内容 → EditorController.save()
+    → FileService.saveContent(fileId, content)
+        → StorageService.saveFiles(files)
+            → StorageBridge.setItem('files', data)
+                → window.pywebview.api.setItem('nestxt_files', data)
+                    → Python Api.setItem(key, value)
+                        → StorageEngine.set_item(key, value)
+                            → 读取 data.json
+                            → 更新数据
+                            → 备份 data.json 到 data.json.bak
+                            → 写入 data.json
+                        ← 返回 {"success": True}
+                    ← 返回 {"success": True}
+                ← Promise resolve
+            ← 保存完成
+        ← signal.emit(FILE_SAVED, file)
+            → app.js 更新状态栏显示
+
+【文件导出流程（PC 端）】
+用户点击导出 → app.js
+    → EditorController.getContent()
+    → await SystemBridge.saveFile(content, 'export.txt')
+        → pywebview.api.saveFile(content, suggested_name)
+            → Python save_file(window, content, suggested_name)
+                → window.create_file_dialog(webview.SAVE_DIALOG, ...)
+                → 用户选择文件路径
+                → 写入文件内容
+            ← 返回 {"success": True, "path": "文件路径"}
+    → App.showMessage('导出成功')
+
+【文件导入流程（PC 端）】
+用户点击导入 → app.js
+    → await SystemBridge.importFile()
+        → pywebview.api.importFile()
+            → Python import_file(window)
+                → window.create_file_dialog(webview.OPEN_DIALOG, ...)
+                → 用户选择文件
+                → 读取文件内容（多编码检测）
+            ← 返回 {"success": True, "name": "文件名", "content": "文件内容"}
+    → FileService.create(result.name, null, result.content)
+    → SidebarController.render()
+
+================================================================================
+12. Python API 完整接口文档
+================================================================================
+
+12.1 StorageEngine（存储引擎）
+--------------------------------------------------------------------------------
+
+类定义：
+```python
+class StorageEngine:
+    """本地文件存储引擎"""
+```
+
+初始化：
+```python
+def __init__(self):
+    """初始化存储引擎，自动创建数据文件"""
+    # 存储路径：%APPDATA%/Nestxt/UserData/data.json
+    # 使用 threading.Lock 保证线程安全
+```
+
+方法：
+
+set_item(key: str, value: str) -> dict
+- 功能：存储数据
+- 参数：key（数据键名）、value（JSON 字符串）
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+- 线程安全：使用 threading.Lock 保护
+
+get_item(key: str)
+- 功能：读取数据
+- 参数：key（数据键名）
+- 返回：数据值（JSON 字符串）或 None
+
+remove_item(key: str) -> dict
+- 功能：删除指定 key
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+clear() -> dict
+- 功能：清空所有数据
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+12.2 Api（API 接口类）
+--------------------------------------------------------------------------------
+
+类定义：
+```python
+class Api:
+    """Python API 接口，供前端调用"""
+```
+
+初始化：
+```python
+def __init__(self):
+    self.engine = StorageEngine()
+    self._window = None
+```
+
+方法：
+
+set_window(window)
+- 功能：设置窗口引用（用于文件对话框操作）
+
+setItem(key: str, value: str) -> dict
+- 功能：存储数据
+- 返回：{"success": True} 或 {"success": False, "error": "错误信息"}
+
+getItem(key: str)
+- 功能：读取数据
+- 返回：数据值（JSON 字符串）或 None
+
+removeItem(key: str) -> dict
+- 功能：删除指定 key
+
+clear() -> dict
+- 功能：清空所有数据
+
+ping() -> str
+- 功能：测试 API 桥接是否正常
+- 返回："pong"
+
+debugLog(msg: str) -> None
+- 功能：前端调试日志输出到 Python 终端
+
+saveFile(content: str, suggested_name: str = 'export.txt') -> dict
+- 功能：弹出保存文件对话框，将内容写入用户选择的文件
+- 返回：{"success": True, "path": "文件路径"} 或 {"success": False, "error": "错误信息"}
+
+importFile() -> dict
+- 功能：弹出打开文件对话框，返回文件内容
+- 返回：{"success": True, "name": "文件名", "content": "文件内容"} 或 {"success": False, "error": "错误信息"}
+
+closeWindow() -> dict
+- 功能：关闭应用程序窗口
+
+clipboardCopy(text: str) -> dict
+- 功能：复制文本到剪贴板
+
+clipboardPaste() -> dict
+- 功能：从剪贴板获取文本
+- 返回：{"success": True, "text": "剪贴板文本"} 或 {"success": False, "error": "错误信息"}
+
+12.3 工具函数
+--------------------------------------------------------------------------------
+
+file_utils.py：
+
+save_file(window, content: str, suggested_name: str = 'export.txt') -> dict
+- 弹出保存对话框，写入文件内容
+- 支持多编码检测
+
+import_file(window) -> dict
+- 弹出打开对话框，读取文件内容
+- 支持 UTF-8/GBK/GB2312/Latin-1 编码检测
+
+clipboard_utils.py：
+
+clipboard_copy(text: str) -> dict
+- 使用 Win32 API 复制文本到剪贴板
+
+clipboard_paste() -> dict
+- 使用 Win32 API 从剪贴板获取文本
+
+resource_utils.py：
+
+resolve_resource_path(relative_path: str) -> str
+- 解析资源文件路径
+- 自动适配开发模式和打包模式
+
+================================================================================
+13. 打包与部署
+================================================================================
+
+13.1 Web 端部署
+--------------------------------------------------------------------------------
+
+方式一：直接打开
+- 直接用浏览器打开 index.html 文件
+- 所有数据存储在浏览器 localStorage 中
+
+方式二：本地服务器
+- 在项目目录下运行：python server.py
+- 访问 http://localhost:8000
+
+方式三：部署到 Netlify（实际部署方式）
+
+部署网站地址：https://nestxt-web-yfan.netlify.app/
+
+部署步骤：
+1. 将 Nestxt_Web 目录下的所有文件压缩为 zip 包
+2. 登录 Netlify 控制台
+3. 将 zip 包拖拽到部署区域
+4. 等待上传和部署完成
+
+注意事项：
+- zip 包内应为扁平结构，根目录直接包含 index.html
+- 无需构建命令，纯静态文件直接部署
+- 每次更新只需重新拖拽新的 zip 包即可覆盖部署
+
+13.2 PC 端开发环境运行
+--------------------------------------------------------------------------------
+
+环境要求：
+- Python 3.x（推荐 3.8+）
+- pywebview
+- pywin32（Windows 平台）
+
+安装依赖：
+```bash
+pip install pywebview pywin32
+```
+
+运行应用：
+```bash
+cd Nestxt_PC/py
+python app.py
+```
+
+开发模式特点：
+- 资源文件相对于项目根目录
+- 修改前端代码后刷新窗口即可生效
+- 数据保存在 data/data.json（开发环境）
+
+13.3 PC 端 PyInstaller 打包
+--------------------------------------------------------------------------------
+
+打包步骤：
+
+1. 安装 PyInstaller
+```bash
+pip install pyinstaller
+```
+
+2. 执行打包
+```bash
+cd Nestxt_PC
+pyinstaller build.spec
+```
+
+3. 查看输出
+- 打包完成后，exe 文件位于 dist/Nestxt.exe
+- 打包临时文件位于 Build/ 目录
+
+4. 测试打包结果
+- 双击 dist/Nestxt.exe 运行
+- 验证所有功能正常
+- 检查数据文件保存到 %APPDATA%/Nestxt/UserData/data.json
+
+关键配置说明（build.spec）：
+- datas：指定需要打包的资源文件（Web 目录、图标文件）
+- hiddenimports：指定需要打包但 PyInstaller 无法自动检测的模块
+- console=False：不显示控制台窗口
+- icon：指定 exe 文件图标
+
+部署注意事项：
+- 单文件分发：打包成单个 exe 文件，用户无需安装 Python 环境
+- 数据目录：数据保存在 %APPDATA%/Nestxt/UserData/data.json
+- 版本更新：用户只需替换 exe 文件即可更新，数据文件不受影响
+- 卸载：删除 exe 文件即可，如需清理数据删除 %APPDATA%/Nestxt/UserData/ 目录
+
+13.4 系统要求
+--------------------------------------------------------------------------------
+
+Web 端：
+- 浏览器：Chrome / Firefox / Edge / Safari 等支持 ES6 的现代浏览器
+- 无需安装 Python、Node.js 或任何第三方库
+- 浏览器需支持 localStorage
+
+PC 端：
+- 操作系统：Windows 10/11（推荐），Windows 7/8（需要 EdgeChromium 运行时）
+- 硬件：CPU 1 GHz 或更快，内存 2 GB 或更多，磁盘空间 100 MB
+- 打包后无需安装 Python
+- pywebview 使用 EdgeChromium 渲染引擎（Windows 10/11 自带）
+
+================================================================================
+14. 错误处理与降级策略
+================================================================================
+
+14.1 存储空间不足处理
+--------------------------------------------------------------------------------
+
+问题场景：
+- Web 端：localStorage 达到浏览器配额限制（通常 5-10MB）
+- PC 端：磁盘空间不足
+
+当前实现：
+- StorageBridge.setItem() 使用 try-catch 捕获存储异常
+- 异常发生时输出错误日志到控制台
+- 不会中断应用运行，但数据可能未保存
+
+降级策略：
+1. 提示用户清理浏览器数据或导出备份后清理旧文件
+2. 建议用户删除不需要的版本快照（每个文件最多 20 个版本）
+3. 提供"导出全部数据"功能，用户可备份后清理浏览器数据
+
+14.2 文件读取失败处理
+--------------------------------------------------------------------------------
+
+问题场景：
+- 导入的文件损坏或格式不支持
+- 编码检测失败导致乱码
+
+当前实现：
+- TextFileReader 使用 try-catch 包装所有读取操作
+- 编码检测失败时回退到 Latin-1（不会抛出异常）
+- 二进制文件检测（非可打印字符占比超过 30%）弹出警告
+
+降级策略：
+1. 编码检测失败时，使用 Latin-1 作为兜底（不会丢失字节）
+2. 提供 forceRead 方法，允许用户强制打开检测为二进制的文件
+3. 支持手动切换编码（UTF-8/GBK/GB2312/Big5），使用原始字节重新解码
+
+14.3 存储异常处理（PC 端）
+--------------------------------------------------------------------------------
+
+问题场景：
+- 数据文件损坏或丢失
+- 磁盘空间不足
+- 文件权限问题
+
+当前实现：
+- 写入失败时返回错误信息，前端提示用户
+- 自动备份机制，可以从 .bak 文件恢复
+- 建议用户定期导出备份数据
+
+14.4 文件操作异常处理（PC 端）
+--------------------------------------------------------------------------------
+
+问题场景：
+- 文件对话框取消
+- 文件读取失败（编码问题）
+- 文件写入失败（权限问题）
+
+当前实现：
+- 用户取消对话框：返回错误信息，不中断应用
+- 文件读取失败：尝试多种编码（UTF-8、GBK、GB2312、Latin-1）
+- 文件写入失败：返回错误信息，前端提示用户
+
+14.5 窗口异常处理（PC 端）
+--------------------------------------------------------------------------------
+
+问题场景：
+- 窗口创建失败
+- 图标设置失败
+- 窗口关闭时资源清理失败
+
+降级策略：
+1. 图标设置失败：应用继续运行，使用默认图标
+2. 窗口关闭时资源清理失败：系统自动释放资源
+
+14.6 全局异常捕获
+--------------------------------------------------------------------------------
+
+当前实现：
+- 所有关键操作使用 try-catch 包装
+- Signal.emit() 使用 try-catch 包装每个监听器的调用
+- 单个监听器异常不会中断其他监听器的执行
+- 未捕获的异常输出到控制台
+
+降级策略：
+1. 监听器异常：记录错误日志，继续执行其他监听器
+2. 捕获未处理异常，防止应用崩溃
+3. 释放互斥体，允许重新启动（PC 端）
+
+================================================================================
+15. 安全性考虑
+================================================================================
+
+15.1 XSS 防护
+--------------------------------------------------------------------------------
+
+风险场景：
+- 用户导入的文件包含恶意脚本
+- 文件名包含 HTML 特殊字符
+
+当前实现：
+1. HTML 转义工具函数
+   - App.escapeHtml()：转义 <、>、& 字符
+   - App.escapeAttr()：转义 HTML 属性中的特殊字符
+   - 所有动态内容插入 DOM 前都经过转义处理
+
+2. 内容渲染
+   - 编辑器使用 textarea，天然防止 XSS
+   - 语法高亮使用正则匹配，不执行用户内容
+   - 树图可视化使用纯文本显示
+
+15.2 本地数据安全
+--------------------------------------------------------------------------------
+
+Web 端：
+- 数据以明文 JSON 格式存储在 localStorage
+- 使用 nestxt_ 前缀区分应用数据
+- 适合个人使用，不适合存储敏感信息
+
+PC 端：
+- 数据保存在 %APPDATA%/Nestxt/UserData/data.json
+- 使用 JSON 格式存储，明文可读
+- 每次写入前自动创建备份
+
+安全建议：
+1. 数据加密（可选）
+2. 数据完整性校验
+3. 访问控制（Windows ACL）
+
+15.3 文件内容安全处理
+--------------------------------------------------------------------------------
+
+防护措施：
+- 所有文件内容作为纯文本处理
+- 不使用 eval()、exec() 等动态执行
+- 正则表达式匹配使用安全模式，避免 ReDoS 攻击
+- 导出文件不包含可执行代码
+
+15.4 单实例控制安全（PC 端）
+--------------------------------------------------------------------------------
+
+当前实现：
+- 使用 Windows 互斥体 (Mutex) 实现单实例控制
+- 互斥体名称包含 GUID，难以猜测
+
+15.5 安全最佳实践
+--------------------------------------------------------------------------------
+
+对用户的建议：
+1. 定期导出备份数据，防止数据丢失
+2. 不要在公共电脑上存储敏感信息
+3. 定期更新应用到最新版本
+
+对开发者的建议：
+1. 实现 Content Security Policy (CSP)
+2. 定期安全审计，检查 XSS 和注入漏洞
+3. 实现异常监控和上报机制
+4. 提供数据加密选项（可选功能）
+
+================================================================================
+16. Web 端与 PC 端差异对比
+================================================================================
+
+16.1 架构差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 纯前端架构（HTML/CSS/JS）
+- 所有代码在浏览器中运行
+- 无需后端服务器
+- StorageBridge 使用 localStorage 引擎
+- SystemBridge 使用 File System Access API + Clipboard API
+
+PC 端：
+- 混合架构（Python 后端 + Web 前端）
+- 前端代码在 pywebview 窗口中运行
+- Python 后端提供系统能力
+- 通过 pywebview API 桥接通信
+- StorageBridge 使用 Python StorageEngine 引擎
+- SystemBridge 使用 Python 系统 API
+
+16.2 存储差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 使用浏览器 localStorage
+- 存储容量限制（通常 5-10MB）
+- 数据存储在浏览器中
+- 清除浏览器缓存会丢失数据
+- 跨设备数据无法同步
+
+PC 端：
+- 使用本地文件存储（%APPDATA%/Nestxt/UserData/data.json）
+- 存储容量更大（仅受磁盘空间限制）
+- 数据保存在系统 AppData 目录
+- 不受浏览器缓存清理影响
+- 自动备份机制（data.json.bak）
+- 线程安全（threading.Lock）
+
+16.3 功能差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 无法访问系统剪贴板（需要用户授权）
+- 无法使用系统文件对话框（使用 File System Access API 或降级方案）
+- 无法设置窗口图标
+- 无法控制窗口行为
+
+PC 端：
+- 可以访问系统剪贴板
+- 可以使用系统文件对话框（原生对话框）
+- 可以设置窗口图标
+- 可以控制窗口行为（如关闭窗口）
+- 支持单实例控制
+
+16.4 部署差异
+--------------------------------------------------------------------------------
+
+Web 端：
+- 部署到 Netlify/Vercel 等平台
+- 用户通过浏览器访问
+- 无需安装
+- 跨平台（任何支持现代浏览器的设备）
+
+PC 端：
+- 打包成单个 exe 文件
+- 用户下载并运行 exe 文件
+- 无需安装 Python 环境
+- 仅支持 Windows 平台（当前）
+
+================================================================================
+文档结束
+================================================================================
+
+如有任何问题或建议，请联系开发者：
+作者：YFan
+邮箱：603349580@qq.com
+微信：a603349580
