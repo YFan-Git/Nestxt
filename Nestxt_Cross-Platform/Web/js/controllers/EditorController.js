@@ -671,6 +671,10 @@ const EditorController = {
      */
     save() {
         this._doSave();
+        // 保存后将焦点归还给编辑器，确保用户可继续输入并触发自动保存
+        if (this._textarea) {
+            this._textarea.focus();
+        }
     },
 
     /**
